@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}新建周计划 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-plus-circle"></i> 新建周计划</h2>
+    <p class="text-muted">规划本周的工作安排（仅限工作日）</p>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> 温馨提示：周计划仅允许在工作日创建，休息日默认为休息状态。
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            
+            <div class="col-12">
+                <h5 class="text-muted mb-3 border-bottom pb-2">
+                    <i class="bi bi-calendar3"></i> 每日任务安排
+                </h5>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-danger me-1">周一</span> 工作任务
+                    </label>
+                    <textarea name="monday_task" class="form-control" rows="2" placeholder="请输入周一的工作任务"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-warning text-dark me-1">周二</span> 工作任务
+                    </label>
+                    <textarea name="tuesday_task" class="form-control" rows="2" placeholder="请输入周二的工作任务"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-info me-1">周三</span> 工作任务
+                    </label>
+                    <textarea name="wednesday_task" class="form-control" rows="2" placeholder="请输入周三的工作任务"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-primary me-1">周四</span> 工作任务
+                    </label>
+                    <textarea name="thursday_task" class="form-control" rows="2" placeholder="请输入周四的工作任务"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-success me-1">周五</span> 工作任务
+                    </label>
+                    <textarea name="friday_task" class="form-control" rows="2" placeholder="请输入周五的工作任务"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-secondary me-1">周六</span> 休息日
+                    </label>
+                    <textarea name="saturday_task" class="form-control bg-light" rows="2" placeholder="休息日" readonly></textarea>
+                    <small class="text-muted">休息日不可编辑</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        <span class="badge bg-dark me-1">周日</span> 休息日
+                    </label>
+                    <textarea name="sunday_task" class="form-control bg-light" rows="2" placeholder="休息日" readonly></textarea>
+                    <small class="text-muted">休息日不可编辑</small>
+                </div>
+            </div>
+            
+            <div class="col-12 mt-4 border-top pt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 创建周计划
+                </button>
+                <a href="{% url 'weekly_plan_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

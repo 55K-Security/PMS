@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}预算成本列表 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-currency-dollar"></i> 项目预算成本</h2>
+            <p class="text-muted">管理项目预算编制与成本监控</p>
+        </div>
+        <a href="{% url 'budget_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> 新建预算
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>预算ID</th>
+                        <th>项目名称</th>
+                        <th>负责人</th>
+                        <th>总预算</th>
+                        <th>总成本</th>
+                        <th>剩余预算</th>
+                        <th>成本占比</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for budget in budgets %}
+                    <tr>
+                        <td>{{ budget.budget_id }}</td>
+                        <td>{{ budget.project_name }}</td>
+                        <td>{{ budget.project_manager }}</td>
+                        <td>¥{{ budget.total_budget|floatformat:2 }}</td>
+                        <td>¥{{ budget.total_cost|floatformat:2 }}</td>
+                        <td class="{% if budget.remaining_budget < 0 %}text-danger{% else %}text-success{% endif %}">
+                            ¥{{ budget.remaining_budget|floatformat:2 }}
+                        </td>
+                        <td>{{ budget.cost_ratio|floatformat:2 }}%</td>
+                        <td>
+                            {% if budget.remaining_budget < 0 %}
+                            <span class="badge bg-danger">超支</span>
+                            {% elif budget.remaining_budget < 3000 %}
+                            <span class="badge bg-warning">预算不足</span>
+                            {% else %}
+                            <span class="badge bg-success">正常</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'budget_edit' budget.budget_id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">暂无预算数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

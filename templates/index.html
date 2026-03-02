@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="page-header">
+        <h2><i class="bi bi-kanban"></i> 项目管理系统</h2>
+        <p>欢迎使用项目管理系统</p>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="stat-card stat-primary">
+                <div class="stat-icon">
+                    <i class="bi bi-folder"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_projects }}</h3>
+                    <p>总项目数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-success">
+                <div class="stat-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ completed_projects }}</h3>
+                    <p>已完成项目</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="bi bi-play-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ in_progress_projects }}</h3>
+                    <p>进行中项目</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-danger">
+                <div class="stat-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ overdue_projects }}</h3>
+                    <p>逾期项目</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="stat-card stat-info">
+                <div class="stat-icon">
+                    <i class="bi bi-list-task"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_tasks }}</h3>
+                    <p>总任务数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-success">
+                <div class="stat-icon">
+                    <i class="bi bi-check2-all"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ completed_tasks }}</h3>
+                    <p>已完成任务</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ in_progress_tasks }}</h3>
+                    <p>进行中任务</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card stat-danger">
+                <div class="stat-icon">
+                    <i class="bi bi-exclamation-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ overdue_tasks }}</h3>
+                    <p>逾期任务</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>¥{{ total_budget|floatformat:0 }}</h3>
+                    <p>总预算</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;">
+                    <i class="bi bi-credit-card"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>¥{{ total_cost|floatformat:0 }}</h3>
+                    <p>总支出</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card {% if over_budget_count > 0 %}stat-danger{% else %}stat-success{% endif %}">
+                <div class="stat-icon">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ over_budget_count }}</h3>
+                    <p>超支项目</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-clock"></i> 今日待办</h5>
+                </div>
+                <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                    {% if today_reminders %}
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>类型</th>
+                                <th>项目</th>
+                                <th>内容</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reminder in today_reminders %}
+                            <tr>
+                                <td>
+                                    {% if reminder.task_type == '已逾期' %}
+                                    <span class="badge bg-danger">{{ reminder.task_type }}</span>
+                                    {% elif reminder.task_type == '今日截止' %}
+                                    <span class="badge bg-warning">{{ reminder.task_type }}</span>
+                                    {% elif reminder.task_type == '今日开始' %}
+                                    <span class="badge bg-info">{{ reminder.task_type }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ reminder.task_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ reminder.project_name }}</td>
+                                <td>{{ reminder.key_content_name }}</td>
+                                <td>{{ reminder.task_status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted text-center">暂无今日待办</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-exclamation-triangle text-danger"></i> 逾期任务预警</h5>
+                </div>
+                <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                    {% if overdue_task_list %}
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>任务名称</th>
+                                <th>项目</th>
+                                <th>负责人</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in overdue_task_list %}
+                            <tr class="table-danger">
+                                <td>{{ task.key_content_name }}</td>
+                                <td>{{ task.project.project_name }}</td>
+                                <td>{{ task.task_owner.user_name }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted text-center">暂无逾期任务</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-pie-chart"></i> 项目状态分布</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="mb-2">
+                                <span class="badge bg-success" style="font-size: 24px; padding: 15px;">{{ completed_projects }}</span>
+                            </div>
+                            <p>已完成</p>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-2">
+                                <span class="badge bg-primary" style="font-size: 24px; padding: 15px;">{{ in_progress_projects }}</span>
+                            </div>
+                            <p>进行中</p>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-2">
+                                <span class="badge bg-secondary" style="font-size: 24px; padding: 15px;">{{ not_started_projects }}</span>
+                            </div>
+                            <p>未开始</p>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-2">
+                                <span class="badge bg-danger" style="font-size: 24px; padding: 15px;">{{ overdue_projects }}</span>
+                            </div>
+                            <p>逾期</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

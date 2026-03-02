@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}任务列表 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-list-task"></i> 任务信息管理</h2>
+            <p class="text-muted">管理项目中的关键任务与执行状态</p>
+        </div>
+        <a href="{% url 'task_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> 新建任务
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <select name="project" class="form-select">
+                    <option value="">全部项目</option>
+                    {% for p in projects %}
+                    <option value="{{ p.project_id }}" {% if request.GET.project == p.project_id %}selected{% endif %}>{{ p.project_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">全部状态</option>
+                    <option value="已完成" {% if request.GET.status == '已完成' %}selected{% endif %}>已完成</option>
+                    <option value="进行中" {% if request.GET.status == '进行中' %}selected{% endif %}>进行中</option>
+                    <option value="未开始" {% if request.GET.status == '未开始' %}selected{% endif %}>未开始</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="owner" class="form-select">
+                    <option value="">全部负责人</option>
+                    {% for u in owners %}
+                    <option value="{{ u.user_name }}" {% if request.GET.owner == u.user_name %}selected{% endif %}>{{ u.user_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-secondary" style="white-space: nowrap;">
+                    <i class="bi bi-search"></i> 筛选
+                </button>
+            </div>
+        </form>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>任务ID</th>
+                        <th>所属项目</th>
+                        <th>关键内容</th>
+                        <th>紧急程度</th>
+                        <th>负责人</th>
+                        <th>计划开始</th>
+                        <th>计划结束</th>
+                        <th>周期(天)</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr>
+                        <td>{{ task.task_id }}</td>
+                        <td>{{ task.project.project_name }}</td>
+                        <td>{{ task.key_content_name }}</td>
+                        <td>
+                            {% if task.priority_level == '优先级1' %}
+                            <span class="badge bg-danger">{{ task.priority_level }}</span>
+                            {% elif task.priority_level == '优先级2' %}
+                            <span class="badge bg-warning">{{ task.priority_level }}</span>
+                            {% elif task.priority_level == '优先级3' %}
+                            <span class="badge bg-info">{{ task.priority_level }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ task.priority_level }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ task.task_owner.user_name }}</td>
+                        <td>{{ task.plan_start_date }}</td>
+                        <td>{{ task.plan_end_date }}</td>
+                        <td>{{ task.task_cycle }}</td>
+                        <td>
+                            {% if task.task_status == '已完成' %}
+                            <span class="badge bg-success">{{ task.task_status }}</span>
+                            {% elif task.task_status == '进行中' %}
+                            <span class="badge bg-primary">{{ task.task_status }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ task.task_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'task_edit' task.task_id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'task_delete' task.task_id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定删除此任务吗？')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">暂无任务数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
