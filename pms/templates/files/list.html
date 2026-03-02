@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}文件管理 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-folder2-open"></i> 文件管理</h2>
+            <p class="text-muted">管理项目相关文件</p>
+        </div>
+        <a href="{% url 'file_upload' %}" class="btn btn-primary">
+            <i class="bi bi-upload"></i> 上传文件
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>文件名</th>
+                        <th>大小</th>
+                        <th>上传人</th>
+                        <th>上传时间</th>
+                        <th>描述</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td>
+                            <i class="bi bi-file-earmark"></i> {{ file.file_name }}
+                        </td>
+                        <td>{{ file.get_file_size_display }}</td>
+                        <td>{{ file.uploaded_by.user_name|default:'未知' }}</td>
+                        <td>{{ file.upload_date|date:"Y-m-d H:i" }}</td>
+                        <td>{{ file.description|default:'-' }}</td>
+                        <td>
+                            <a href="{% url 'file_download' file.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <a href="{% url 'file_delete' file.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定删除此文件吗？')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">暂无文件，请上传文件</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

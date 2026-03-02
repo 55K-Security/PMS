@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}编辑预算 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-pencil"></i> 编辑预算</h2>
+    <p class="text-muted">修改项目预算与成本信息</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-6">
+                <label class="form-label">项目名称</label>
+                <input type="text" class="form-control" value="{{ budget.project_name }}" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">负责人</label>
+                <input type="text" class="form-control" value="{{ budget.project_manager }}" disabled>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">工作日天数</label>
+                <input type="number" name="workday_count" class="form-control" value="{{ budget.workday_count }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">投入人数</label>
+                <input type="number" name="participant_count" class="form-control" value="{{ budget.participant_count }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">总预算金额(元)</label>
+                <input type="number" name="total_budget" class="form-control" value="{{ budget.total_budget }}" step="0.01" required>
+            </div>
+            <div class="col-12">
+                <h5 class="mb-3">分项成本</h5>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">人员成本</label>
+                <input type="number" name="personnel_cost" class="form-control" value="{{ budget.personnel_cost }}" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">研发成本</label>
+                <input type="number" name="rnd_cost" class="form-control" value="{{ budget.rnd_cost }}" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">设计成本</label>
+                <input type="number" name="design_cost" class="form-control" value="{{ budget.design_cost }}" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">差旅成本</label>
+                <input type="number" name="travel_cost" class="form-control" value="{{ budget.travel_cost }}" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">市场推广成本</label>
+                <input type="number" name="marketing_cost" class="form-control" value="{{ budget.marketing_cost }}" step="0.01">
+            </div>
+            <div class="col-12">
+                <label class="form-label">成本说明</label>
+                <textarea name="cost_remark" class="form-control" rows="3">{{ budget.cost_remark|default:'' }}</textarea>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 保存修改
+                </button>
+                <a href="{% url 'budget_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

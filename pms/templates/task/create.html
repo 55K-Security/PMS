@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}新建任务 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-plus-circle"></i> 新建任务</h2>
+    <p class="text-muted">为项目创建关键任务</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-6">
+                <label class="form-label">所属项目 <span class="text-danger">*</span></label>
+                <select name="project" class="form-select" required>
+                    <option value="">请选择项目</option>
+                    {% for p in projects %}
+                    <option value="{{ p.project_id }}">{{ p.project_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">任务负责人 <span class="text-danger">*</span></label>
+                <select name="task_owner" class="form-select" required>
+                    <option value="">请选择负责人</option>
+                    {% for u in owners %}
+                    <option value="{{ u.user_id }}">{{ u.user_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">关键内容名称 <span class="text-danger">*</span></label>
+                <input type="text" name="key_content_name" class="form-control" placeholder="例如：需求调研" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">紧急程度 <span class="text-danger">*</span></label>
+                <select name="priority_level" class="form-select" required>
+                    <option value="优先级1">优先级1（最高）</option>
+                    <option value="优先级2">优先级2</option>
+                    <option value="优先级3" selected>优先级3</option>
+                    <option value="优先级4">优先级4（最低）</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">计划开始时间 <span class="text-danger">*</span></label>
+                <input type="text" name="plan_start_date" class="form-control date-picker" placeholder="点击选择日期" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">计划结束时间 <span class="text-danger">*</span></label>
+                <input type="text" name="plan_end_date" class="form-control date-picker" placeholder="点击选择日期" required>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 创建任务
+                </button>
+                <a href="{% url 'task_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

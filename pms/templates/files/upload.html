@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}上传文件 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-upload"></i> 上传文件</h2>
+    <p class="text-muted">上传项目相关文件</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="row g-3">
+            {% csrf_token %}
+            <div class="col-12">
+                <label class="form-label">选择文件</label>
+                <input type="file" name="file" class="form-control" required>
+                <small class="text-muted">支持任意类型的文件上传</small>
+            </div>
+            <div class="col-12">
+                <label class="form-label">文件描述</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="请输入文件描述（可选）"></textarea>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> 上传
+                </button>
+                <a href="{% url 'file_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

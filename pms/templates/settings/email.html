@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}邮件配置 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-envelope"></i> 邮件配置</h2>
+    <p class="text-muted">配置邮件服务用于发送告警通知</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <div class="col-12">
+                <h5 class="mb-3"><i class="bi bi-gear"></i> 邮件服务器配置</h5>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">SMTP服务器地址</label>
+                <input type="text" name="email_host" class="form-control" value="{{ email_host }}" placeholder="例如: smtp.qq.com">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">SMTP端口</label>
+                <input type="number" name="email_port" class="form-control" value="{{ email_port }}" placeholder="587">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">邮箱用户名</label>
+                <input type="email" name="email_user" class="form-control" value="{{ email_user }}" placeholder="your@email.com">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">邮箱密码/授权码</label>
+                <input type="password" name="email_password" class="form-control" value="{{ email_password }}" placeholder="请输入SMTP密码或授权码">
+            </div>
+            <div class="col-md-12">
+                <label class="form-label">发件人邮箱</label>
+                <input type="email" name="email_from" class="form-control" value="{{ email_from }}" placeholder="your@email.com">
+            </div>
+            <div class="col-12">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="enable_email_notify" id="enableNotify" {% if enable_notify %}checked{% endif %}>
+                    <label class="form-check-label" for="enableNotify">启用邮件通知</label>
+                </div>
+                <small class="text-muted">启用后，系统将在每日待办和逾期任务预警时发送邮件提醒</small>
+            </div>
+            <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 保存配置
+                </button>
+                <a href="{% url 'settings' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> 常用SMTP配置</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>邮箱服务商</th>
+                    <th>SMTP服务器</th>
+                    <th>端口</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>QQ邮箱</td>
+                    <td>smtp.qq.com</td>
+                    <td>587</td>
+                </tr>
+                <tr>
+                    <td>163邮箱</td>
+                    <td>smtp.163.com</td>
+                    <td>587</td>
+                </tr>
+                <tr>
+                    <td>Gmail</td>
+                    <td>smtp.gmail.com</td>
+                    <td>587</td>
+                </tr>
+                <tr>
+                    <td>企业邮箱</td>
+                    <td>smtp.exmail.qq.com</td>
+                    <td>465</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

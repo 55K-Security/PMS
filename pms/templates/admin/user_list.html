@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-shield-lock"></i> 用户管理</h2>
+            <p class="text-muted">管理系统用户账户</p>
+        </div>
+        <a href="{% url 'admin_user_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> 添加用户
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>最后登录</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email|default:'-' }}</td>
+                        <td>
+                            {% if user.is_superuser %}
+                            <span class="badge bg-danger">超级管理员</span>
+                            {% elif user.is_staff %}
+                            <span class="badge bg-warning">管理员</span>
+                            {% else %}
+                            <span class="badge bg-secondary">普通用户</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge bg-success">启用</span>
+                            {% else %}
+                            <span class="badge bg-secondary">禁用</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.last_login|date:"Y-m-d H:i"|default:'从未登录' }}</td>
+                        <td>
+                            <a href="{% url 'admin_user_edit' user.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'admin_user_reset_password' user.id %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-key"></i>
+                            </a>
+                            {% if user.id != request.user.id %}
+                            <a href="{% url 'admin_user_delete' user.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定删除此用户吗？')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">暂无用户</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

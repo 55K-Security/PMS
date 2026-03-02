@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}监控 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+  <div>
+    <h2><i class="bi bi-server"></i> 监控</h2>
+    <p class="text-muted">CPU、内存、磁盘、网络等核心性能指标</p>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <div class="btn-group" role="group">
+      <input type="radio" class="btn-check" name="updateMode" id="realtime" autocomplete="off" checked>
+      <label class="btn btn-outline-success btn-sm" for="realtime">
+        <i class="bi bi-lightning"></i> 实时
+      </label>
+      <input type="radio" class="btn-check" name="updateMode" id="manual" autocomplete="off">
+      <label class="btn btn-outline-secondary btn-sm" for="manual">
+        <i class="bi bi-clock"></i> 定时
+      </label>
+    </div>
+    <select class="form-select form-select-sm" id="timeRange" style="width: 120px;">
+      <option value="1">最近1分钟</option>
+      <option value="5">最近5分钟</option>
+      <option value="15" selected>最近15分钟</option>
+      <option value="30">最近30分钟</option>
+      <option value="60">最近1小时</option>
+    </select>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-3 col-sm-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 140px;">
+        <h6 class="text-muted">CPU 使用率</h6>
+        <div class="display-4" id="cpu-value">{{ cpu|default:'-' }}%</div>
+        <div class="progress mt-2" style="height: 8px;">
+          <div class="progress-bar bg-primary" id="cpu-bar" style="width: {{ cpu|default:0 }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 140px;">
+        <h6 class="text-muted">内存使用率</h6>
+        <div class="display-4" id="mem-value">{{ memory|default:'-' }}%</div>
+        <div class="progress mt-2" style="height: 8px;">
+          <div class="progress-bar bg-success" id="mem-bar" style="width: {{ memory|default:0 }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 140px;">
+        <h6 class="text-muted">磁盘使用率</h6>
+        <div class="display-4" id="disk-value">{{ disk|default:'-' }}%</div>
+        <div class="progress mt-2" style="height: 8px;">
+          <div class="progress-bar bg-warning" id="disk-bar" style="width: {{ disk|default:0 }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center d-flex flex-column justify-content-center" style="min-height: 140px;">
+        <h6 class="text-muted">网络速率</h6>
+        <div class="row text-center mt-2">
+          <div class="col-6">
+            <i class="bi bi-arrow-up text-success"></i>
+            <div id="net-sent">0 KB/s</div>
+            <small class="text-muted">上传</small>
+          </div>
+          <div class="col-6">
+            <i class="bi bi-arrow-down text-info"></i>
+            <div id="net-recv">0 KB/s</div>
+            <small class="text-muted">下载</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-cpu text-primary"></i> CPU 趋势</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="cpuChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-memory text-success"></i> 内存 趋势</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="memChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-hdd text-warning"></i> 磁盘 趋势</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="diskChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-network text-danger"></i> 网络 趋势</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="netChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let updateInterval = null;
+let isRealtime = true;
+let lastNetSent = {{ net_sent|default:0 }};
+let lastNetRecv = {{ net_recv|default:0 }};
+let maxPoints = 30;
+
+function formatSpeed(bytesPerSec) {
+    if (bytesPerSec === 0) return '0 B/s';
+    const k = 1024;
+    if (bytesPerSec < k) return bytesPerSec + ' B/s';
+    if (bytesPerSec < k * k) return (bytesPerSec / k).toFixed(1) + ' KB/s';
+    return (bytesPerSec / (k * k)).toFixed(1) + ' MB/s';
+}
+
+function createChart(ctx, label, color, max = 100) {
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                backgroundColor: color + '20',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, max: max, title: { display: true, text: label } }
+            },
+            plugins: { legend: { display: false } },
+            animation: false
+        }
+    });
+}
+
+const cpuChart = createChart(document.getElementById('cpuChart').getContext('2d'), 'CPU %', '#0d6efd');
+const memChart = createChart(document.getElementById('memChart').getContext('2d'), '内存 %', '#198754');
+const diskChart = createChart(document.getElementById('diskChart').getContext('2d'), '磁盘 %', '#ffc107');
+const netChart = createChart(document.getElementById('netChart').getContext('2d'), '网络 KB/s', '#dc3545', null);
+
+let dataPoints = { cpu: [], mem: [], disk: [], net: [], labels: [] };
+
+function updateChartData(chart, dataArray) {
+    chart.data.labels = dataArray.labels;
+    chart.data.datasets[0].data = dataArray.data;
+    chart.update();
+}
+
+function updateMonitor() {
+    fetch('/api/monitor-data/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cpu-value').textContent = data.cpu + '%';
+            document.getElementById('cpu-bar').style.width = data.cpu + '%';
+            
+            document.getElementById('mem-value').textContent = data.memory + '%';
+            document.getElementById('mem-bar').style.width = data.memory + '%';
+            
+            document.getElementById('disk-value').textContent = data.disk + '%';
+            document.getElementById('disk-bar').style.width = data.disk + '%';
+            
+            const sentSpeed = data.net_sent - lastNetSent;
+            const recvSpeed = data.net_recv - lastNetRecv;
+            lastNetSent = data.net_sent;
+            lastNetRecv = data.net_recv;
+            
+            document.getElementById('net-sent').textContent = formatSpeed(Math.max(0, sentSpeed));
+            document.getElementById('net-recv').textContent = formatSpeed(Math.max(0, recvSpeed));
+            
+            const netSpeedKB = (sentSpeed + recvSpeed) / 1024;
+            
+            dataPoints.cpu.push(data.cpu);
+            dataPoints.mem.push(data.memory);
+            dataPoints.disk.push(data.disk);
+            dataPoints.net.push(netSpeedKB);
+            dataPoints.labels.push(new Date().toLocaleTimeString());
+            
+            if (dataPoints.cpu.length > maxPoints) {
+                dataPoints.cpu.shift();
+                dataPoints.mem.shift();
+                dataPoints.disk.shift();
+                dataPoints.net.shift();
+                dataPoints.labels.shift();
+            }
+            
+            updateChartData(cpuChart, { labels: dataPoints.labels, data: dataPoints.cpu });
+            updateChartData(memChart, { labels: dataPoints.labels, data: dataPoints.mem });
+            updateChartData(diskChart, { labels: dataPoints.labels, data: dataPoints.disk });
+            updateChartData(netChart, { labels: dataPoints.labels, data: dataPoints.net });
+        })
+        .catch(err => console.error('Error:', err));
+}
+
+function startRealtime() {
+    if (updateInterval) clearInterval(updateInterval);
+    updateInterval = setInterval(updateMonitor, 2000);
+    updateMonitor();
+}
+
+function stopRealtime() {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+    }
+}
+
+document.getElementById('realtime').addEventListener('change', function() {
+    if (this.checked) {
+        isRealtime = true;
+        startRealtime();
+    }
+});
+
+document.getElementById('manual').addEventListener('change', function() {
+    if (this.checked) {
+        isRealtime = false;
+        stopRealtime();
+    }
+});
+
+document.getElementById('timeRange').addEventListener('change', function() {
+    maxPoints = parseInt(this.value) * 3;
+    dataPoints = { cpu: [], mem: [], disk: [], net: [], labels: [] };
+    if (isRealtime) {
+        updateMonitor();
+    }
+});
+
+startRealtime();
+</script>
+{% endblock %}

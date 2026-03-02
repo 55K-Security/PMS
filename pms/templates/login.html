@@ -1,0 +1,956 @@
+{% extends "base.html" %}
+
+{% block title %}登录 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="login-page theme-light" id="loginPage">
+    <canvas id="stars-canvas" aria-hidden="true" style="display: none;"></canvas>
+    
+    <div class="login-container">
+        <div class="login-card" role="form" aria-label="用户登录">
+            <div class="login-header">
+                <div class="login-logo" aria-hidden="true">
+                    <i class="bi bi-kanban"></i>
+                </div>
+                <h1>PMS</h1>
+                <p>项目管理系统</p>
+            </div>
+            
+            {% if messages %}
+            <div class="login-alert" role="alert">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <form method="post" class="login-form" id="loginForm" autocomplete="on">
+                {% csrf_token %}
+                <div class="form-field">
+                    <label for="username" class="visually-hidden">用户名</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="请输入用户名" required autocomplete="username">
+                    <i class="bi bi-person" aria-hidden="true"></i>
+                </div>
+                
+                <div class="form-field">
+                    <label for="password" class="visually-hidden">密码</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="请输入密码" required autocomplete="current-password">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                </div>
+                
+                <div class="captcha-field">
+                    <div class="captcha-input-wrap">
+                        <label for="captcha" class="visually-hidden">验证码</label>
+                        <input type="text" id="captcha" name="captcha" class="form-input captcha-input" placeholder="请输入验证码" required maxlength="4" autocomplete="off">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    </div>
+                    <div class="captcha-display" onclick="refreshCaptcha()" role="button" tabindex="0" aria-label="点击刷新验证码" onkeypress="if(event.key==='Enter')refreshCaptcha()">
+                        <img id="captcha-img" src="/captcha/" alt="验证码" width="140" height="50">
+                        <span class="captcha-refresh"><i class="bi bi-arrow-clockwise"></i> 换一张</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="loginBtn" aria-label="登录">
+                    <span class="btn-text">登录</span>
+                    <span class="btn-loader" aria-hidden="true">
+                        <svg viewBox="0 0 50 50">
+                            <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="4"></circle>
+                        </svg>
+                    </span>
+                    <i class="bi bi-arrow-right btn-icon" aria-hidden="true"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.login-page {
+    height: 100vh;
+    width: 100%;
+    position: relative;
+    background: var(--bg-dark, #000);
+    overflow: hidden;
+    transition: background 0.4s ease;
+}
+
+.login-page.theme-dark {
+    background: #000;
+}
+
+.login-page.theme-light {
+    background: linear-gradient(135deg, #e0f7ff 0%, #c7f0ff 50%, #e0f7ff 100%);
+}
+
+.login-page.theme-system {
+    background: #000;
+}
+
+@media (prefers-color-scheme: light) {
+    .login-page.theme-system {
+        background: linear-gradient(135deg, #e8eef7 0%, #f0f4ff 50%, #e8eef7 100%);
+    }
+    .login-page.theme-system .login-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(99, 102, 241, 0.15);
+    }
+    .login-page.theme-system .login-header h1 {
+        color: #1e1e2e;
+        text-shadow: none;
+    }
+    .login-page.theme-system .login-header p {
+        color: rgba(0, 0, 0, 0.5);
+    }
+    .login-page.theme-system .form-input {
+        background: #ffffff;
+        border-color: rgba(99, 102, 241, 0.15);
+        color: #1e1e2e;
+    }
+    .login-page.theme-system .form-input::placeholder {
+        color: rgba(0, 0, 0, 0.3);
+    }
+    .login-page.theme-system .form-input:hover {
+        border-color: rgba(99, 102, 241, 0.3);
+        background: rgba(99, 102, 241, 0.03);
+    }
+    .login-page.theme-system .form-input:focus {
+        border-color: rgba(99, 102, 241, 0.5);
+        background: rgba(99, 102, 241, 0.05);
+    }
+    .login-page.theme-system .form-field i,
+    .login-page.theme-system .captcha-input-wrap i {
+        color: rgba(0, 0, 0, 0.35);
+    }
+    .login-page.theme-system .form-input:focus + i {
+        color: #6366f1;
+    }
+    .login-page.theme-system .captcha-display {
+        border-color: rgba(99, 102, 241, 0.15);
+    }
+    .login-page.theme-system .captcha-refresh {
+        background: rgba(99, 102, 241, 0.1);
+        color: rgba(0, 0, 0, 0.5);
+    }
+    .login-page.theme-system .theme-btn {
+        color: rgba(0, 0, 0, 0.5);
+    }
+    .login-page.theme-system .theme-btn:hover {
+        color: #6366f1;
+    }
+    .login-page.theme-system .theme-btn.active {
+        color: #6366f1;
+        background: rgba(99, 102, 241, 0.15);
+    }
+}
+
+/* Light theme explicit styles */
+.login-page.theme-light .login-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(99, 102, 241, 0.2);
+    box-shadow: 
+        0 0 60px rgba(99, 102, 241, 0.1),
+        0 20px 50px rgba(0, 0, 0, 0.1),
+        inset 0 0 40px rgba(99, 102, 241, 0.02);
+}
+
+.login-page.theme-light .login-header h1 {
+    color: #1e1e2e;
+    text-shadow: none;
+    background: none;
+    -webkit-text-fill-color: #1e1e2e;
+}
+
+.login-page.theme-light .login-header p {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+    .login-page.theme-light .form-input {
+        background: #ffffff;
+        border-color: rgba(41, 151, 201, 0.25);
+        color: #1e1e2e;
+    }
+
+    .login-page.theme-light .form-input::placeholder {
+        color: #666666;
+    }
+
+.login-page.theme-light .form-input:hover {
+    border-color: rgba(41, 151, 201, 0.4);
+    background: #f8fbff;
+}
+
+.login-page.theme-light .form-input:focus {
+    border-color: rgba(41, 151, 201, 0.6);
+    background: #ffffff;
+    box-shadow: 0 0 25px rgba(41, 151, 201, 0.2), inset 0 0 15px rgba(41, 151, 201, 0.04);
+}
+
+.login-page.theme-light .form-field i,
+.login-page.theme-light .captcha-input-wrap i {
+    color: rgba(0, 0, 0, 0.3);
+}
+
+.login-page.theme-light .form-input:focus + i {
+    color: #6366f1;
+}
+
+.login-page.theme-light .captcha-display {
+    border-color: rgba(41, 151, 201, 0.25);
+    background: #ffffff;
+}
+
+.login-page.theme-light .captcha-refresh {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.login-page.theme-light .captcha-display:hover .captcha-refresh {
+    background: rgba(99, 102, 241, 0.2);
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.login-page.theme-light .theme-btn {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.login-page.theme-light .theme-btn:hover {
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.login-page.theme-light .theme-btn.active {
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.login-page.theme-light .login-logo {
+    box-shadow: 
+        0 8px 30px rgba(99, 102, 241, 0.3),
+        0 0 40px rgba(139, 92, 246, 0.2);
+}
+
+#stars-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    transition: opacity 0.4s ease;
+}
+
+.login-page.theme-light #stars-canvas,
+.login-page.theme-system #stars-canvas {
+    opacity: 0;
+}
+
+@media (prefers-color-scheme: light) {
+    .login-page.theme-system #stars-canvas {
+        opacity: 0;
+    }
+}
+
+.theme-switcher {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 6px 10px;
+    border-radius: 30px;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.login-page.theme-light .theme-switcher {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(99, 102, 241, 0.1);
+}
+
+.theme-btn {
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.theme-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+}
+
+.theme-btn.active {
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.login-page.theme-light .theme-btn {
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.login-page.theme-light .theme-btn:hover {
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.login-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-card {
+    width: 420px;
+    padding: 44px 44px;
+    background: rgba(15, 15, 25, 0.85);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    border-radius: 24px;
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    box-shadow: 
+        0 0 80px rgba(99, 102, 241, 0.12),
+        0 25px 60px rgba(0, 0, 0, 0.5),
+        inset 0 0 50px rgba(99, 102, 241, 0.03);
+    animation: card-appear 0.6s ease-out, card-glow 6s ease-in-out infinite alternate;
+}
+
+@keyframes card-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes card-glow {
+    0%, 100% {
+        box-shadow: 
+            0 0 80px rgba(99, 102, 241, 0.12),
+            0 25px 60px rgba(0, 0, 0, 0.5),
+            inset 0 0 50px rgba(99, 102, 241, 0.03);
+    }
+    50% {
+        box-shadow: 
+            0 0 100px rgba(99, 102, 241, 0.18),
+            0 25px 60px rgba(0, 0, 0, 0.5),
+            inset 0 0 60px rgba(99, 102, 241, 0.05);
+    }
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 36px;
+}
+
+.login-logo {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 18px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: white;
+    box-shadow: 
+        0 10px 40px rgba(99, 102, 241, 0.4),
+        0 0 50px rgba(139, 92, 246, 0.25);
+    animation: logo-float 4s ease-in-out infinite;
+}
+
+@keyframes logo-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.login-header h1 {
+    font-size: 34px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 5px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+}
+
+.login-header p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 4px;
+    font-weight: 500;
+}
+
+.login-form {
+    margin-bottom: 0;
+}
+
+.form-field {
+    position: relative;
+    margin-bottom: 18px;
+}
+
+.form-field i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 17px;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.form-input {
+    width: 100%;
+    padding: 15px 16px 15px 48px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    border-radius: 14px;
+    color: #fff;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.form-input:hover {
+    border-color: rgba(99, 102, 241, 0.25);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.form-input:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 
+        0 0 25px rgba(99, 102, 241, 0.15),
+        inset 0 0 15px rgba(99, 102, 241, 0.04);
+}
+
+.form-input:focus + i {
+    color: #a855f7;
+}
+
+.captcha-field {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 22px;
+    align-items: stretch;
+}
+
+.captcha-input-wrap {
+    flex: 1;
+    position: relative;
+}
+
+.captcha-input-wrap i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 17px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.captcha-input {
+    padding-left: 48px !important;
+    letter-spacing: 5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-family: 'Courier New', monospace;
+}
+
+.captcha-display {
+    position: relative;
+    cursor: pointer;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.captcha-display:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    transform: scale(1.02);
+}
+
+.captcha-display:active {
+    transform: scale(0.98);
+}
+
+#captcha-img {
+    display: block;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #0a0a15 0%, #151525 100%);
+}
+
+.captcha-refresh {
+    position: absolute;
+    bottom: 5px;
+    right: 6px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.captcha-display:hover .captcha-refresh {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(99, 102, 241, 0.25);
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.35s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 
+        0 8px 30px rgba(99, 102, 241, 0.4),
+        0 0 40px rgba(99, 102, 241, 0.12);
+    position: relative;
+    overflow: hidden;
+}
+
+.submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.6s ease;
+}
+
+.submit-btn:hover::before {
+    left: 100%;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 12px 35px rgba(99, 102, 241, 0.5),
+        0 0 50px rgba(139, 92, 246, 0.2);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+.submit-btn.loading {
+    pointer-events: none;
+}
+
+.submit-btn.loading .btn-text {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.submit-btn.loading .btn-loader {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.submit-btn.loading .btn-icon {
+    opacity: 0;
+    transform: translateX(25px);
+}
+
+.btn-loader {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.35s ease;
+}
+
+.btn-loader svg {
+    width: 100%;
+    height: 100%;
+    animation: rotate 1s linear infinite;
+}
+
+.btn-loader circle {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: 0;
+    stroke-linecap: round;
+    animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate {
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes dash {
+    0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+    50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+    100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+}
+
+.btn-icon {
+    transition: all 0.35s ease;
+    font-size: 17px;
+}
+
+.login-alert {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    text-align: center;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@media (max-width: 480px) {
+    .login-card {
+        width: 100%;
+        padding: 32px 22px;
+    }
+    
+    .captcha-field {
+        flex-direction: column;
+    }
+    
+    .captcha-display {
+        align-self: center;
+    }
+    
+    .login-header h1 {
+        font-size: 28px;
+        letter-spacing: 3px;
+    }
+    
+    .login-logo {
+        width: 60px;
+        height: 60px;
+        font-size: 26px;
+    }
+    
+    .theme-switcher {
+        top: 12px;
+        right: 12px;
+        padding: 5px 8px;
+    }
+    
+    .theme-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+}
+</style>
+
+<script>
+let currentTheme = localStorage.getItem('theme') || 'dark';
+
+function setTheme(theme) {
+    currentTheme = theme;
+    localStorage.setItem('theme', theme);
+    
+    const page = document.getElementById('loginPage');
+    const buttons = document.querySelectorAll('.theme-btn');
+    
+    page.classList.remove('theme-light', 'theme-dark', 'theme-system');
+    page.classList.add('theme-' + theme);
+    
+    buttons.forEach(btn => btn.classList.remove('active'));
+    buttons.forEach(btn => {
+        if (btn.getAttribute('onclick').includes("'" + theme + "'")) {
+            btn.classList.add('active');
+        }
+    });
+    
+    if (theme === 'light') {
+        document.getElementById('stars-canvas').style.opacity = '0';
+    } else if (theme === 'dark') {
+        document.getElementById('stars-canvas').style.opacity = '1';
+    } else {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            document.getElementById('stars-canvas').style.opacity = '0';
+        } else {
+            document.getElementById('stars-canvas').style.opacity = '1';
+        }
+    }
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (currentTheme === 'system') {
+        setTheme('system');
+    }
+});
+
+setTheme(currentTheme);
+
+// Captcha - Backend generated
+function refreshCaptcha() {
+    const img = document.getElementById('captcha-img');
+    img.src = '/captcha/?t=' + new Date().getTime();
+}
+
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('loginBtn');
+    btn.classList.add('loading');
+    // Let backend handle captcha validation
+    sessionStorage.setItem('loginStarted', 'true');
+});
+
+// Initialize captcha on page load
+refreshCaptcha();
+
+// Stars Canvas
+(function() {
+    const canvas = document.getElementById('stars-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    let width, height;
+    let stars = [];
+    let particles = [];
+    let mouseX = 0, mouseY = 0;
+    
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    
+    function createStars() {
+        stars = [];
+        const starCount = Math.floor((width * height) / 2500);
+        for (let i = 0; i < starCount; i++) {
+            stars.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                radius: Math.random() * 1.6 + 0.3,
+                alpha: Math.random(),
+                alphaSpeed: Math.random() * 0.012 + 0.003,
+                vx: (Math.random() - 0.5) * 0.15,
+                vy: (Math.random() - 0.5) * 0.15,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+    }
+    
+    function createParticle(x, y) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 2.5,
+            vy: (Math.random() - 0.5) * 2.5 - 1,
+            radius: Math.random() * 2 + 0.5,
+            alpha: 1,
+            color: `hsl(${Math.random() * 50 + 220}, 80%, 70%)`
+        });
+    }
+    
+    function drawStars() {
+        stars.forEach(star => {
+            star.x += star.vx;
+            star.y += star.vy;
+            star.alpha += star.alphaSpeed;
+            star.twinkle += 0.04;
+            
+            const twinkleFactor = Math.sin(star.twinkle) * 0.25 + 0.75;
+            
+            if (star.alpha > 1 || star.alpha < 0) {
+                star.alphaSpeed = -star.alphaSpeed;
+            }
+            
+            if (star.x < 0) star.x = width;
+            if (star.x > width) star.x = 0;
+            if (star.y < 0) star.y = height;
+            if (star.y > height) star.y = 0;
+            
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.radius * twinkleFactor, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha * twinkleFactor})`;
+            ctx.fill();
+            
+            if (star.radius > 1) {
+                const glow = ctx.createRadialGradient(star.x, star.y, 0, star.x, star.y, star.radius * 2.5);
+                glow.addColorStop(0, `rgba(200, 215, 255, ${star.alpha * 0.25})`);
+                glow.addColorStop(1, 'transparent');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius * 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+    
+    function drawParticles() {
+        particles = particles.filter(p => p.alpha > 0);
+        
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 0.01;
+            p.radius *= 0.97;
+            
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color.replace(')', `, ${p.alpha})`).replace('hsl', 'hsla');
+            ctx.fill();
+        });
+        
+        stars.forEach(star => {
+            const dx = mouseX - star.x;
+            const dy = mouseY - star.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < 160) {
+                ctx.beginPath();
+                ctx.moveTo(star.x, star.y);
+                ctx.lineTo(mouseX, mouseY);
+                ctx.strokeStyle = `rgba(120, 150, 235, ${(160 - dist) / 160 * 0.1})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+            }
+        });
+        
+        if (Math.random() < 0.3) {
+            createParticle(mouseX, mouseY);
+        }
+    }
+    
+    function drawShootingStars() {
+        if (Math.random() < 0.0015) {
+            const startX = Math.random() * width;
+            const startY = Math.random() * height * 0.35;
+            const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.25;
+            const length = Math.random() * 200 + 120;
+            const endX = startX + Math.cos(angle) * length;
+            const endY = startY + Math.sin(angle) * length;
+            
+            const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+            gradient.addColorStop(0.5, 'rgba(200, 215, 255, 0.35)');
+            gradient.addColorStop(1, 'rgba(150, 175, 255, 0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(startX, startY, 1.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+        }
+    }
+    
+    function animate() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, width, height);
+        
+        drawStars();
+        drawParticles();
+        drawShootingStars();
+        
+        requestAnimationFrame(animate);
+    }
+    
+    window.addEventListener('resize', () => {
+        resize();
+        createStars();
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+    
+    window.addEventListener('touchmove', (e) => {
+        mouseX = e.touches[0].clientX;
+        mouseY = e.touches[0].clientY;
+    });
+    
+    resize();
+    createStars();
+    animate();
+})();
+</script>
+{% endblock %}

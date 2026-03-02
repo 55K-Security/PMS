@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}系统设置 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-gear"></i> 系统设置</h2>
+    <p class="text-muted">管理个人信息和系统配置</p>
+</div>
+
+<div class="row">
+    <!-- 系统设置 -->
+    <div class="col-md-12">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-sliders"></i> 系统设置</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{% url 'settings_ai' %}" class="text-decoration-none">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-cpu text-primary" style="font-size: 36px;"></i>
+                                    <h6 class="mt-2">AI配置</h6>
+                                    <p class="text-muted small mb-0">配置AI服务自动生成总结</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'settings_email' %}" class="text-decoration-none">
+                            <div class="card h-100 border-info">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-envelope text-info" style="font-size: 36px;"></i>
+                                    <h6 class="mt-2">邮件配置</h6>
+                                    <p class="text-muted small mb-0">配置邮件告警和通知</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'settings_security' %}" class="text-decoration-none">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-shield-lock text-success" style="font-size: 36px;"></i>
+                                    <h6 class="mt-2">安全设置</h6>
+                                    <p class="text-muted small mb-0">验证码、双因素认证</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 界面定制 -->
+    <div class="col-md-12">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-brush"></i> 界面定制</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">上传自定义登录背景与系统Logo，个性化界面风格。</p>
+                <a href="{% url 'ui_customize' %}" class="btn btn-outline-primary">前往定制</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 系统信息 -->
+    <div class="col-md-12">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> 系统信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td width="200">系统版本：</td>
+                        <td>PMS v1.0.0</td>
+                    </tr>
+                    <tr>
+                        <td>当前用户：</td>
+                        <td>{{ user.username }}</td>
+                    </tr>
+                    <tr>
+                        <td>用户角色：</td>
+                        <td>
+                            {% if user.is_superuser %}
+                            <span class="badge bg-danger">超级管理员</span>
+                            {% elif user.is_staff %}
+                            <span class="badge bg-warning">管理员</span>
+                            {% else %}
+                            <span class="badge bg-secondary">普通用户</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>所属团队：</td>
+                        <td>{{ user_info.team_name|default:"未设置" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 系统版本升级 -->
+    <div class="col-md-12">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> 系统版本升级</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">上传补丁包与完整升级包，执行系统版本升级。</p>
+                <a href="{% url 'version_upgrade' %}" class="btn btn-outline-primary">前往升级</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}新建团队 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-plus-circle"></i> 新建团队</h2>
+    <p class="text-muted">创建新的团队组并关联成员</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-6">
+                <label class="form-label">团队名称 <span class="text-danger">*</span></label>
+                <input type="text" name="team_name" class="form-control" placeholder="例如：研发部" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label">团队成员</label>
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#memberModal">
+                    <i class="bi bi-people"></i> 选择成员
+                    <span class="badge bg-primary ms-1" id="selectedCount">0</span>
+                </button>
+                <small class="text-muted ms-2">已选择 <span id="selectedDisplay">0</span> 人</small>
+            </div>
+            <div class="col-12">
+                <label class="form-label">备注说明</label>
+                <textarea name="remark" class="form-control" rows="2" placeholder="团队备注信息"></textarea>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 创建团队
+                </button>
+                <a href="{% url 'user_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="memberModal" tabindex="-1" aria-labelledby="memberModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="memberModalLabel">
+            <i class="bi bi-people"></i> 选择团队成员
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="p-3 bg-light border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted">按住鼠标滑动批量选择</span>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectAll()">全选</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAll()">清空</button>
+                </div>
+            </div>
+        </div>
+        <div class="member-grid p-3" id="memberGrid" style="max-height:400px; overflow:auto; user-select:none;">
+          {% for user in users %}
+          <div class="member-item" data-id="{{ user.user_id }}" onmouseover="handleMouseOver(event)" onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)" onmouseleave="handleMouseLeave(event)">
+            <div class="form-check">
+              <input class="form-check-input member-checkbox" type="checkbox" name="members" value="{{ user.user_id }}" id="modal_user{{ user.user_id }}" onchange="updateCount()">
+              <label class="form-check-label member-label" for="modal_user{{ user.user_id }}">
+                <div class="avatar-circle">{{ user.user_name|slice:":1" }}</div>
+                <span>{{ user.user_name }}</span>
+              </label>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="me-auto text-muted">已选择 <strong id="modalSelectedCount">0</strong> 人</span>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="confirmSelection()">
+            <i class="bi bi-check-lg"></i> 确认
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+}
+.member-item {
+    padding: 10px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+.member-item:hover {
+    background: #f0f7ff;
+}
+.member-item.selected {
+    background: #e7f1ff;
+    border-color: #0d6efd;
+}
+.member-item .form-check {
+    margin: 0;
+}
+.member-item .member-checkbox {
+    display: none;
+}
+.member-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    margin: 0;
+}
+.member-label .avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.member-item.selected .avatar-circle {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+}
+</style>
+
+<script>
+let isDragging = false;
+let startCheckbox = null;
+
+function handleMouseDown(e) {
+    isDragging = true;
+    const checkbox = e.currentTarget.querySelector('.member-checkbox');
+    if (checkbox) {
+        startCheckbox = checkbox;
+        checkbox.checked = !checkbox.checked;
+        updateItemStyle(checkbox);
+    }
+}
+
+function handleMouseOver(e) {
+    if (isDragging && startCheckbox) {
+        const checkbox = e.currentTarget.querySelector('.member-checkbox');
+        if (checkbox && startCheckbox.checked) {
+            checkbox.checked = true;
+            updateItemStyle(checkbox);
+        }
+    }
+}
+
+function handleMouseUp(e) {
+    isDragging = false;
+    startCheckbox = null;
+    updateCount();
+}
+
+function handleMouseLeave(e) {
+    isDragging = false;
+    startCheckbox = null;
+}
+
+function updateItemStyle(checkbox) {
+    const item = checkbox.closest('.member-item');
+    if (checkbox.checked) {
+        item.classList.add('selected');
+    } else {
+        item.classList.remove('selected');
+    }
+}
+
+function updateCount() {
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    const selected = Array.from(checkboxes).filter(cb => cb.checked);
+    
+    document.getElementById('selectedCount').textContent = selected.length;
+    document.getElementById('selectedDisplay').textContent = selected.length;
+    document.getElementById('modalSelectedCount').textContent = selected.length;
+    
+    checkboxes.forEach(cb => {
+        const item = cb.closest('.member-item');
+        if (cb.checked) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function selectAll() {
+    document.querySelectorAll('.member-checkbox').forEach(cb => {
+        cb.checked = true;
+    });
+    updateCount();
+}
+
+function clearAll() {
+    document.querySelectorAll('.member-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateCount();
+}
+
+function confirmSelection() {
+    updateCount();
+}
+</script>
+{% endblock %}

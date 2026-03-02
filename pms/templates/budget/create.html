@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}新建预算 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-plus-circle"></i> 新建预算</h2>
+    <p class="text-muted">为项目编制预算与成本计划</p>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <div class="col-md-6">
+                <label class="form-label">项目 <span class="text-danger">*</span></label>
+                <select name="project" class="form-select" required>
+                    <option value="">请选择项目</option>
+                    {% for p in projects %}
+                    <option value="{{ p.project_id }}">{{ p.project_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">工作日天数 <span class="text-danger">*</span></label>
+                <input type="number" name="workday_count" class="form-control" value="0" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">投入人数 <span class="text-danger">*</span></label>
+                <input type="number" name="participant_count" class="form-control" value="1" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">总预算金额(元) <span class="text-danger">*</span></label>
+                <input type="number" name="total_budget" class="form-control" value="0" min="0" step="0.01" required>
+            </div>
+            <div class="col-12">
+                <h5 class="mb-3">分项成本</h5>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">人员成本</label>
+                <input type="number" name="personnel_cost" class="form-control" value="0" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">研发成本</label>
+                <input type="number" name="rnd_cost" class="form-control" value="0" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">设计成本</label>
+                <input type="number" name="design_cost" class="form-control" value="0" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">差旅成本</label>
+                <input type="number" name="travel_cost" class="form-control" value="0" min="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">市场推广成本</label>
+                <input type="number" name="marketing_cost" class="form-control" value="0" min="0" step="0.01">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> 创建预算
+                </button>
+                <a href="{% url 'budget_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
