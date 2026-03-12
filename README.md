@@ -155,7 +155,7 @@ python --version   # 或 python3 --version
 
 ### 2. 克隆项目
 ```bash
-git clone https://github.com/xxx/pms.git   # 替换为实际仓库地址
+git clone https://github.com/55K-Security/PMS.git   # 替换为实际仓库地址
 cd pms
 ```
 > Windows 下若未安装 Git，可先安装 [Git for Windows](https://git-scm.com/download/win) 或直接下载项目 ZIP 包解压。
