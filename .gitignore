@@ -24,6 +24,7 @@ wheels/
 *.log
 local_settings.py
 db.sqlite3
+db.sqlite3.backup
 media/
 .env
 .venv
@@ -46,5 +47,6 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 
-# Git
-.git/
+# Project specific
+*.tar.gz
+.monkeycode/
