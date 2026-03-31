@@ -55,9 +55,8 @@ class KeyManager:
 
 
 class RateLimiter:
-    """请求频率限制器"""
+    """请求频率限制器 - 使用Django缓存"""
     
-    _cache: Dict[str, List[float]] = {}
     _limits = {
         'chat': (20, 60),      # 20次/分钟
         'config': (10, 60),     # 10次/分钟
@@ -67,19 +66,41 @@ class RateLimiter:
     @classmethod
     def check(cls, key: str, action: str) -> bool:
         """检查是否超过频率限制"""
-        now = time.time()
-        limit, window = cls._limits.get(action, (60, 60))
-        
-        if key not in cls._cache:
-            cls._cache[key] = []
-        
-        cls._cache[key] = [t for t in cls._cache[key] if now - t < window]
-        
-        if len(cls._cache[key]) >= limit:
-            return False
-        
-        cls._cache[key].append(now)
-        return True
+        try:
+            from django.core.cache import cache
+            
+            limit, window = cls._limits.get(action, (60, 60))
+            cache_key = f'rate_limit:{action}:{key}'
+            
+            now = time.time()
+            timestamps = cache.get(cache_key, [])
+            timestamps = [t for t in timestamps if now - t < window]
+            
+            if len(timestamps) >= limit:
+                return False
+            
+            timestamps.append(now)
+            cache.set(cache_key, timestamps, window)
+            return True
+        except Exception:
+            return True
+    
+    @classmethod
+    def get_remaining(cls, key: str, action: str) -> int:
+        """获取剩余可用次数"""
+        try:
+            from django.core.cache import cache
+            
+            limit, window = cls._limits.get(action, (60, 60))
+            cache_key = f'rate_limit:{action}:{key}'
+            
+            now = time.time()
+            timestamps = cache.get(cache_key, [])
+            timestamps = [t for t in timestamps if now - t < window]
+            
+            return max(0, limit - len(timestamps))
+        except Exception:
+            return -1
 
 
 class AIGateway:
@@ -157,18 +178,48 @@ class AIGateway:
         if 'max_tokens' in kwargs:
             payload['max_tokens'] = kwargs['max_tokens']
         
-        try:
-            if stream:
-                return self._stream_request(api_url, headers, payload)
-            else:
-                response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-                response.raise_for_status()
-                return response.json().get('choices', [{}])[0].get('message', {}).get('content', '')
-        except requests.exceptions.Timeout:
-            raise TimeoutError("AI服务请求超时，请稍后重试")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"OpenAI API调用失败: {e}")
-            raise RuntimeError(f"AI服务调用失败: {str(e)}")
+        return self._request_with_retry(
+            'openai', api_url, headers, payload, stream
+        )
+    
+    def _request_with_retry(self, provider: str, url: str, headers: dict, payload: dict, stream: bool = False, max_retries: int = 3) -> Any:
+        """带重试机制的请求"""
+        last_error = RuntimeError(f"{provider}服务暂时不可用")
+        
+        for attempt in range(max_retries):
+            try:
+                if stream:
+                    return self._stream_request(url, headers, payload)
+                else:
+                    response = requests.post(url, headers=headers, json=payload, timeout=30)
+                    response.raise_for_status()
+                    
+                    if provider == 'openai':
+                        return response.json().get('choices', [{}])[0].get('message', {}).get('content', '')
+                    elif provider == 'claude':
+                        return response.json().get('content', [{}])[0].get('text', '')
+                    else:
+                        result = response.json()
+                        if 'choices' in result:
+                            return result['choices'][0]['message']['content']
+                        elif 'response' in result:
+                            return result['response']
+                        return str(result)
+                        
+            except TimeoutError:
+                last_error = TimeoutError(f"{provider}服务请求超时")
+                logger.warning(f"{provider} API超时 (尝试 {attempt + 1}/{max_retries})")
+            except requests.exceptions.RequestException as e:
+                last_error = RuntimeError(f"{provider}服务调用失败")
+                logger.warning(f"{provider} API请求失败 (尝试 {attempt + 1}/{max_retries})")
+            except Exception as e:
+                last_error = RuntimeError(f"{provider}服务异常")
+                logger.error(f"{provider} API异常: {e}")
+            
+            if attempt < max_retries - 1:
+                time.sleep(1 * (attempt + 1))
+        
+        raise last_error
     
     def _chat_claude(self, messages: List[dict], stream: bool = True, **kwargs) -> Any:
         """Claude API对接"""
@@ -195,18 +246,9 @@ class AIGateway:
         if 'temperature' in kwargs:
             payload['temperature'] = kwargs['temperature']
         
-        try:
-            if stream:
-                return self._stream_request(api_url, headers, payload)
-            else:
-                response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-                response.raise_for_status()
-                return response.json().get('content', [{}])[0].get('text', '')
-        except requests.exceptions.Timeout:
-            raise TimeoutError("AI服务请求超时，请稍后重试")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Claude API调用失败: {e}")
-            raise RuntimeError(f"AI服务调用失败: {str(e)}")
+        return self._request_with_retry(
+            'claude', api_url, headers, payload, stream
+        )
     
     def _chat_private(self, messages: List[dict], stream: bool = True, **kwargs) -> Any:
         """私有化部署模型对接"""
@@ -229,29 +271,12 @@ class AIGateway:
             'messages': messages,
             'stream': stream,
         }
-        
-        if 'temperature' in kwargs:
-            payload['temperature'] = kwargs['temperature']
         if 'max_tokens' in kwargs:
             payload['max_tokens'] = kwargs['max_tokens']
         
-        try:
-            if stream:
-                return self._stream_request(api_url, headers, payload)
-            else:
-                response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-                response.raise_for_status()
-                result = response.json()
-                if 'choices' in result:
-                    return result['choices'][0]['message']['content']
-                elif 'response' in result:
-                    return result['response']
-                return str(result)
-        except requests.exceptions.Timeout:
-            raise TimeoutError("AI服务请求超时，请稍后重试")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"私有化模型API调用失败: {e}")
-            raise RuntimeError(f"AI服务调用失败: {str(e)}")
+        return self._request_with_retry(
+            'private', api_url, headers, payload, stream
+        )
     
     def _stream_request(self, url: str, headers: dict, payload: dict) -> Generator[str, None, None]:
         """流式请求处理"""
