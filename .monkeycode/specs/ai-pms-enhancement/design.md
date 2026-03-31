@@ -553,3 +553,35 @@ class TestWorkflowEngine:
 [^1]: (官方文档) - OpenAI API Reference - https://platform.openai.com/docs/api-reference
 [^2]: (官方文档) - Django Documentation - https://docs.djangoproject.com/
 [^3]: (官方文档) - Bootstrap 5 - https://getbootstrap.com/docs/5.3/
+
+## 后续改进建议
+
+### 安全性改进
+
+1. **API Key加密增强**
+   - 当前使用SHA256派生密钥，建议改用专业的PBKDF2密钥派生
+   - 日志脱敏处理，避免敏感信息泄露
+
+2. **API访问控制**
+   - 添加请求频率限制，防止API配额耗尽
+   - 对敏感操作添加二次验证
+
+### 性能优化
+
+1. **缓存策略**
+   - AI配置信息缓存至Redis，有效期24小时
+   - 对话历史分页加载，避免大数据量查询
+
+2. **异步处理**
+   - 风险检测使用后台任务执行
+   - 报告生成支持异步队列处理
+
+### 代码质量
+
+1. **重构建议**
+   - 统一API路由前缀设计（按功能分组）
+   - 引入数据验证层（如Pydantic）
+
+2. **测试覆盖**
+   - 补充单元测试和集成测试
+   - 添加API端到端测试
