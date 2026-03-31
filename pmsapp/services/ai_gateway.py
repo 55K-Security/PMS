@@ -6,10 +6,80 @@ AI网关服务 - 统一管理多种AI服务提供商
 import json
 import logging
 import requests
+import base64
+import time
 from typing import List, Dict, Any, Optional, Generator
 from django.conf import settings
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
+
+
+class KeyManager:
+    """密钥管理器 - 使用PBKDF2派生密钥"""
+    
+    SALT = b'pms_ai_config_salt_v1'
+    ITERATIONS = 100000
+    
+    @classmethod
+    def derive_key(cls, secret_key: str = None) -> bytes:
+        """使用PBKDF2派生加密密钥"""
+        if secret_key is None:
+            secret_key = settings.SECRET_KEY
+        
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=cls.SALT,
+            iterations=cls.ITERATIONS,
+            backend=default_backend()
+        )
+        return base64.urlsafe_b64encode(kdf.derive(secret_key.encode()))
+    
+    @classmethod
+    def encrypt(cls, plaintext: str) -> str:
+        """加密API密钥"""
+        key = cls.derive_key()
+        cipher = Fernet(key)
+        return cipher.encrypt(plaintext.encode()).decode()
+    
+    @classmethod
+    def decrypt(cls, ciphertext: str) -> str:
+        """解密API密钥"""
+        key = cls.derive_key()
+        cipher = Fernet(key)
+        return cipher.decrypt(ciphertext.encode()).decode()
+
+
+class RateLimiter:
+    """请求频率限制器"""
+    
+    _cache: Dict[str, List[float]] = {}
+    _limits = {
+        'chat': (20, 60),      # 20次/分钟
+        'config': (10, 60),     # 10次/分钟
+        'report': (5, 300),     # 5次/5分钟
+    }
+    
+    @classmethod
+    def check(cls, key: str, action: str) -> bool:
+        """检查是否超过频率限制"""
+        now = time.time()
+        limit, window = cls._limits.get(action, (60, 60))
+        
+        if key not in cls._cache:
+            cls._cache[key] = []
+        
+        cls._cache[key] = [t for t in cls._cache[key] if now - t < window]
+        
+        if len(cls._cache[key]) >= limit:
+            return False
+        
+        cls._cache[key].append(now)
+        return True
 
 
 class AIGateway:
@@ -48,7 +118,11 @@ class AIGateway:
             字符串响应或生成器
         """
         if provider not in self.SUPPORTED_PROVIDERS:
-            raise ValueError(f"不支持的AI服务提供商: {provider}")
+            raise ValueError("不支持的AI服务提供商")
+        
+        user_key = kwargs.get('user_id', 'anonymous')
+        if not RateLimiter.check(user_key, 'chat'):
+            raise RuntimeError("请求过于频繁，请稍后再试")
         
         if provider == 'openai':
             return self._chat_openai(messages, stream, **kwargs)
@@ -306,13 +380,8 @@ class AIGateway:
         """
         try:
             from pmsapp.models import SystemSettings
-            import base64
-            import hashlib
-            from cryptography.fernet import Fernet
             
-            key = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
-            cipher = Fernet(base64.urlsafe_b64encode(key))
-            encrypted_key = cipher.encrypt(api_key.encode()).decode()
+            encrypted_key = KeyManager.encrypt(api_key)
             
             config_data = json.dumps({
                 'api_url': api_url,
@@ -336,7 +405,7 @@ class AIGateway:
             self._load_configs()
             return True
         except Exception as e:
-            logger.error(f"保存AI配置失败: {e}")
+            logger.error(f"保存AI配置失败")
             return False
     
     def get_config(self, provider: str = None) -> Optional[Dict[str, Any]]:
@@ -351,9 +420,6 @@ class AIGateway:
         """
         try:
             from pmsapp.models import SystemSettings
-            import base64
-            import hashlib
-            from cryptography.fernet import Fernet
             
             query = SystemSettings.objects.filter(setting_type='ai', is_enabled=True)
             if provider:
@@ -365,12 +431,10 @@ class AIGateway:
             
             config_data = json.loads(config.description)
             
-            key = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
-            cipher = Fernet(base64.urlsafe_b64encode(key))
-            decrypted_key = cipher.decrypt(config_data['api_key'].encode()).decode()
+            decrypted_key = KeyManager.decrypt(config_data['api_key'])
             config_data['api_key'] = decrypted_key
             
             return config_data
         except Exception as e:
-            logger.error(f"获取AI配置失败: {e}")
+            logger.error(f"获取AI配置失败")
             return None
