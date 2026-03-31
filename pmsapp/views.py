@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse, HttpResponseForbidden
 from django.contrib.auth import authenticate, login, logout
 import os
+import logging
 from django.utils import timezone
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -15,6 +16,9 @@ import string
 import json
 import io
 import base64
+
+logger = logging.getLogger(__name__)
+
 # PIL imports - optional, used for captcha generation
 try:
     from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -82,8 +86,8 @@ def generate_captcha_image(code):
             draw.text((x, y), char, fill=color, font=font)
         
         return image
-    except Exception as e:
-        print(f"Captcha error: {e}")
+    except Exception:
+        logger.warning("Captcha generation failed")
         return None
 
 
@@ -1857,26 +1861,48 @@ def file_upload(request):
         description = request.POST.get('description', '')
         
         if uploaded_file:
+            # 文件安全验证
+            import re
+            ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar'}
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+            
+            # 验证文件扩展名
+            ext = uploaded_file.name.split('.')[-1].lower() if '.' in uploaded_file.name else ''
+            if not ext or ext not in ALLOWED_EXTENSIONS:
+                messages.error(request, '不支持的文件类型')
+                return redirect('file_upload')
+            
+            # 验证文件大小
+            if uploaded_file.size > MAX_FILE_SIZE:
+                messages.error(request, '文件大小不能超过10MB')
+                return redirect('file_upload')
+            
+            # 清理文件名，防止路径遍历
+            safe_filename = re.sub(r'[^\w\s.-]', '', uploaded_file.name)
+            safe_filename = safe_filename[:100]  # 限制长度
+            
             # 创建上传目录
             upload_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
             os.makedirs(upload_dir, exist_ok=True)
             
             # 保存文件
-            file_path = os.path.join(upload_dir, uploaded_file.name)
+            import uuid
+            safe_filename = f"{uuid.uuid4().hex[:8]}_{safe_filename}"
+            file_path = os.path.join(upload_dir, safe_filename)
             with open(file_path, 'wb+') as destination:
                 for chunk in uploaded_file.chunks():
                     destination.write(chunk)
             
             # 保存记录
             ProjectFile.objects.create(
-                file_name=uploaded_file.name,
-                file_path=f'uploads/{uploaded_file.name}',
+                file_name=safe_filename,
+                file_path=f'uploads/{safe_filename}',
                 file_size=uploaded_file.size,
-                description=description,
+                description=description[:200],
                 uploaded_by=user_info,
             )
             
-            messages.success(request, f'文件 {uploaded_file.name} 上传成功')
+            messages.success(request, f'文件上传成功')
         
         return redirect('file_list')
     
