@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}AI对话助手 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-chat-dots"></i> AI对话助手</h2>
+    <p class="text-muted">与AI助手对话，获取项目建议和分析</p>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> 历史会话</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="sessionList">
+                    <div class="list-group-item text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 24px;"></i>
+                        <p class="mt-2 mb-0">暂无历史会话</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="bi bi-lightbulb"></i> 快捷提示</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm text-start" onclick="sendQuickMessage('帮我分析当前项目的风险')">
+                        <i class="bi bi-shield-exclamation"></i> 分析项目风险
+                    </button>
+                    <button class="btn btn-outline-success btn-sm text-start" onclick="sendQuickMessage('生成本周工作总结')">
+                        <i class="bi bi-file-text"></i> 生成周工作总结
+                    </button>
+                    <button class="btn btn-outline-info btn-sm text-start" onclick="sendQuickMessage('推荐合适的任务分配方案')">
+                        <i class="bi bi-people"></i> 任务分配建议
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm text-start" onclick="sendQuickMessage('分析团队工作效率')">
+                        <i class="bi bi-graph-up"></i> 团队效率分析
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="card" style="height: calc(100vh - 250px);">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> 当前会话</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearSession()">
+                        <i class="bi bi-trash"></i> 清空会话
+                    </button>
+                </div>
+            </div>
+            <div class="card-body d-flex flex-column p-0">
+                <div class="chat-messages flex-grow-1 overflow-auto p-3" id="chatMessages">
+                    <div class="chat-message chat-message-bot">
+                        <div class="chat-avatar">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div class="chat-content">
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle"></i>
+                                您好！我是AI助手，可以帮您：
+                                <ul class="mb-0 mt-2">
+                                    <li>分析项目风险和进度</li>
+                                    <li>生成工作周报/月报</li>
+                                    <li>推荐任务分配方案</li>
+                                    <li>解答项目管理问题</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-input-area p-3 border-top">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="chatInput" placeholder="输入您的问题..." onkeypress="handleChatKeypress(event)">
+                        <button class="btn btn-primary" type="button" onclick="sendMessage()">
+                            <i class="bi bi-send"></i> 发送
+                        </button>
+                    </div>
+                    <div class="mt-2 small text-muted">
+                        <i class="bi bi-lightbulb"></i> 提示：您可以问我关于项目管理的问题，我会尽力帮您分析和解答
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-messages {
+    background: var(--bg-secondary);
+}
+
+.chat-message {
+    display: flex;
+    margin-bottom: 16px;
+}
+
+.chat-message-user {
+    flex-direction: row-reverse;
+}
+
+.chat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+.chat-message-bot .chat-avatar {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.chat-message-user .chat-avatar {
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.chat-content {
+    max-width: 75%;
+    margin: 0 12px;
+}
+
+.chat-message-bot .chat-content {
+    margin-left: 0;
+}
+
+.chat-message-user .chat-content {
+    margin-right: 0;
+}
+
+.chat-message-user .chat-content .alert {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+}
+
+.chat-content .alert ul {
+    padding-left: 20px;
+}
+
+.typing-indicator {
+    display: inline-block;
+}
+
+.typing-indicator span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    margin: 0 2px;
+    animation: typing 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSessionId = null;
+let isLoading = false;
+
+function handleChatKeypress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function sendMessage() {
+    if (isLoading) return;
+    
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    input.value = '';
+    addUserMessage(message);
+    
+    isLoading = true;
+    const loadingMsg = addBotMessage('<div class="typing-indicator"><span></span><span></span><span></span></div> 思考中...');
+    
+    fetch('/api/ai/chat/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            message: message,
+            session_id: currentSessionId
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        removeMessage(loadingMsg);
+        isLoading = false;
+        
+        if (res.success) {
+            currentSessionId = res.data.session_id;
+            addBotMessage(res.data.content);
+        } else {
+            addBotMessage('<span class="text-danger"><i class="bi bi-exclamation-circle"></i> ' + (res.error || 'AI服务暂时不可用') + '</span>');
+        }
+    })
+    .catch(err => {
+        removeMessage(loadingMsg);
+        isLoading = false;
+        addBotMessage('<span class="text-danger"><i class="bi bi-exclamation-circle"></i> 请求失败: ' + err.message + '</span>');
+    });
+}
+
+function sendQuickMessage(message) {
+    document.getElementById('chatInput').value = message;
+    sendMessage();
+}
+
+function addUserMessage(content) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-message chat-message-user';
+    div.innerHTML = '
+        <div class="chat-avatar">
+            <i class="bi bi-person"></i>
+        </div>
+        <div class="chat-content">
+            <div class="alert alert-light mb-0">
+                ' + escapeHtml(content) + '
+            </div>
+        </div>
+    ';
+    container.appendChild(div);
+    scrollToBottom();
+}
+
+function addBotMessage(content) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-message chat-message-bot';
+    div.innerHTML = '
+        <div class="chat-avatar">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div class="chat-content">
+            <div class="alert alert-light mb-0">
+                ' + content + '
+            </div>
+        </div>
+    ';
+    container.appendChild(div);
+    scrollToBottom();
+    return div;
+}
+
+function removeMessage(msgDiv) {
+    if (msgDiv && msgDiv.parentNode) {
+        msgDiv.parentNode.removeChild(msgDiv);
+    }
+}
+
+function clearSession() {
+    if (!confirm('确定要清空当前会话吗？')) return;
+    
+    fetch('/api/ai/chat/clear/?session_id=' + (currentSessionId || ''), {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(res => {
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '
+            <div class="chat-message chat-message-bot">
+                <div class="chat-avatar">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <div class="chat-content">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-check-circle"></i> 会话已清空
+                    </div>
+                </div>
+            </div>
+        ';
+        currentSessionId = null;
+    });
+}
+
+function scrollToBottom() {
+    const container = document.getElementById('chatMessages');
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function loadSessionHistory() {
+    fetch('/api/ai/chat/history/', {
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success && res.data.length > 0) {
+            const list = document.getElementById('sessionList');
+            list.innerHTML = res.data.map(s => '
+                <a href="#" class="list-group-item list-group-item-action" onclick="loadSession(\'' + s.session_id + '\')">
+                    <small class="text-muted">' + s.last_message + '</small>
+                </a>
+            ').join('');
+        }
+    });
+}
+
+function loadSession(sessionId) {
+    currentSessionId = sessionId;
+    fetch('/api/ai/chat/history/?session_id=' + sessionId, {
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            
+            res.data.forEach(msg => {
+                if (msg.role === 'user') {
+                    addUserMessage(msg.content);
+                } else {
+                    addBotMessage(msg.content);
+                }
+            });
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadSessionHistory();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}风险预警 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-shield-exclamation"></i> 风险预警</h2>
+    <p class="text-muted">智能检测项目风险，提前预警并提供解决方案</p>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <button class="btn btn-primary" onclick="runRiskCheck()">
+            <i class="bi bi-search"></i> 立即检测
+        </button>
+        <select class="form-select d-inline-block ms-2" style="width: auto;" onchange="filterByProject(this.value)">
+            <option value="">所有项目</option>
+            {% for project in projects %}
+            <option value="{{ project.project_id }}">{{ project.project_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <h2 class="text-danger">{{ risk_summary.critical }}</h2>
+                <p class="mb-0"><i class="bi bi-exclamation-octagon"></i> 严重风险</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h2 class="text-warning">{{ risk_summary.high }}</h2>
+                <p class="mb-0"><i class="bi bi-exclamation-triangle"></i> 高风险</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h2 class="text-primary">{{ risk_summary.medium }}</h2>
+                <p class="mb-0"><i class="bi bi-exclamation-circle"></i> 中风险</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h2 class="text-success">{{ risk_summary.low }}</h2>
+                <p class="mb-0"><i class="bi bi-info-circle"></i> 低风险</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-bell-fill"></i> 未处理预警</h5>
+            </div>
+            <div class="card-body">
+                {% if unresolved_alerts %}
+                <div class="list-group list-group-flush">
+                    {% for alert in unresolved_alerts %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-3">
+                                {% if alert.risk_level == 'critical' %}
+                                <span class="badge risk-critical">严重</span>
+                                {% elif alert.risk_level == 'high' %}
+                                <span class="badge risk-high">高</span>
+                                {% elif alert.risk_level == 'medium' %}
+                                <span class="badge risk-medium">中</span>
+                                {% else %}
+                                <span class="badge risk-low">低</span>
+                                {% endif %}
+                                <span class="badge bg-secondary">{{ alert.get_alert_type_display }}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-success" onclick="resolveAlert('{{ alert.alert_id }}')">
+                                    <i class="bi bi-check-circle"></i> 标记解决
+                                </button>
+                            </div>
+                        </div>
+                        <h6 class="mt-2 mb-1">{{ alert.project.project_name }}</h6>
+                        <p class="mb-1 text-danger">{{ alert.description }}</p>
+                        {% if alert.suggestion %}
+                        <p class="mb-0 text-muted small">
+                            <i class="bi bi-lightbulb"></i> 建议: {{ alert.suggestion }}
+                        </p>
+                        {% endif %}
+                        <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-check-circle" style="font-size: 48px; color: #10b981;"></i>
+                    <p class="mt-3">暂无未处理的风险预警</p>
+                    <button class="btn btn-primary" onclick="runRiskCheck()">
+                        <i class="bi bi-search"></i> 立即检测
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if resolved_alerts %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-check-circle"></i> 已处理预警</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for alert in resolved_alerts %}
+                    <div class="list-group-item px-0 text-muted">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <span class="badge bg-secondary">{{ alert.get_alert_type_display }}</span>
+                                {{ alert.project.project_name }} - {{ alert.description|truncatechars:50 }}
+                            </div>
+                            <small>{{ alert.resolved_at|date:"Y-m-d" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-graph-up"></i> 项目风险分布</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="riskChart" height="250"></canvas>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> 风险说明</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><span class="badge risk-critical me-2">严重</span>需要立即处理</h6>
+                    <p class="text-muted small mb-0">可能导致项目失败的风险，必须立即采取行动</p>
+                </div>
+                <div class="mb-3">
+                    <h6><span class="badge risk-high me-2">高</span>优先处理</h6>
+                    <p class="text-muted small mb-0">影响项目进度或质量的风险，应尽快处理</p>
+                </div>
+                <div class="mb-3">
+                    <h6><span class="badge risk-medium me-2">中</span>需要关注</h6>
+                    <p class="text-muted small mb-0">存在潜在问题，需要关注并适时处理</p>
+                </div>
+                <div>
+                    <h6><span class="badge risk-low me-2">低</span>可暂不处理</h6>
+                    <p class="text-muted small mb-0">轻微风险，可安排在后期处理</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function runRiskCheck() {
+    fetch('/api/risks/check/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            types: ['overdue', 'budget', 'schedule']
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            let total = 0;
+            ['overdue', 'budget', 'schedule'].forEach(type => {
+                if (res.data[type]) {
+                    total += res.data[type].length;
+                }
+            });
+            alert('检测完成，发现 ' + total + ' 个风险项');
+            location.reload();
+        } else {
+            alert('检测失败: ' + (res.error || '未知错误'));
+        }
+    });
+}
+
+function resolveAlert(alertId) {
+    if (!confirm('确定要标记此预警为已解决吗？')) return;
+    
+    fetch('/api/risks/check/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ resolve_alert: alertId })
+    })
+    .then(r => r.json())
+    .then(res => {
+        location.reload();
+    });
+}
+
+function filterByProject(projectId) {
+    if (projectId) {
+        location.href = '/ai/risks/?project=' + projectId;
+    } else {
+        location.href = '/ai/risks/';
+    }
+}
+
+// 风险分布图表
+const ctx = document.getElementById('riskChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['严重', '高', '中', '低'],
+            datasets: [{
+                data: [
+                    {{ risk_summary.critical }},
+                    {{ risk_summary.high }},
+                    {{ risk_summary.medium }},
+                    {{ risk_summary.low }}
+                ],
+                backgroundColor: ['#dc2626', '#f59e0b', '#3b82f6', '#10b981']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

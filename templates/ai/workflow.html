@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}工作流配置 - 项目管理系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i class="bi bi-diagram-3"></i> 工作流配置</h2>
+    <p class="text-muted">配置自动化工作流规则，提升工作效率</p>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+            <i class="bi bi-plus-circle"></i> 创建工作流规则
+        </button>
+        <button class="btn btn-outline-secondary ms-2" onclick="checkWorkflows()">
+            <i class="bi bi-play-circle"></i> 触发检测
+        </button>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-primary">{{ rules.count }}</h3>
+                <p class="mb-0">总规则数</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-success">{{ rules_active }}</h3>
+                <p class="mb-0">启用中</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-warning">{{ recent_logs|length }}</h3>
+                <p class="mb-0">今日执行</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-danger">{{ failed_count|default:0 }}</h3>
+                <p class="mb-0">失败次数</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-list-ul"></i> 工作流规则</h5>
+            </div>
+            <div class="card-body">
+                {% if rules %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>规则名称</th>
+                            <th>触发类型</th>
+                            <th>执行动作</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rule in rules %}
+                        <tr>
+                            <td>
+                                <strong>{{ rule.rule_name }}</strong>
+                                <br><small class="text-muted">{{ rule.rule_id }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ rule.get_trigger_type_display }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ rule.get_action_type_display }}</span>
+                            </td>
+                            <td>
+                                {% if rule.is_enabled %}
+                                <span class="badge workflow-active">启用</span>
+                                {% else %}
+                                <span class="badge workflow-inactive">禁用</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editRule('{{ rule.rule_id }}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRule('{{ rule.rule_id }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="toggleRule('{{ rule.rule_id }}')">
+                                    <i class="bi bi-toggle{% if rule.is_enabled %}-on{% else %}-off{% endif %}"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size: 48px;"></i>
+                    <p class="mt-3">暂无工作流规则</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+                        创建第一条规则
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> 最近执行日志</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                <div class="list-group list-group-flush">
+                    {% for log in recent_logs %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <small class="text-muted">{{ log.rule.rule_name|default:'未知规则' }}</small>
+                                <br>
+                                <span class="{% if log.status == 'success' %}text-success{% elif log.status == 'failed' %}text-danger{% else %}text-warning{% endif %}">
+                                    {{ log.get_status_display }}
+                                </span>
+                            </div>
+                            <small class="text-muted">{{ log.executed_at|date:"H:i" }}</small>
+                        </div>
+                        {% if log.result %}
+                        <small class="text-muted">{{ log.result|truncatechars:50 }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-3">
+                    <p>暂无执行日志</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加规则模态框 -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 创建工作流规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addRuleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">规则名称</label>
+                        <input type="text" class="form-control" name="rule_name" required placeholder="例如：任务逾期提醒">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">触发类型</label>
+                            <select class="form-select" name="trigger_type" required>
+                                <option value="">请选择</option>
+                                <option value="task_overdue">任务逾期</option>
+                                <option value="task_completed">任务完成</option>
+                                <option value="budget_exceeded">预算超支</option>
+                                <option value="schedule_delayed">进度延迟</option>
+                                <option value="daily">每日触发</option>
+                                <option value="weekly">每周触发</option>
+                                <option value="manual">手动触发</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">执行动作</label>
+                            <select class="form-select" name="action_type" required>
+                                <option value="">请选择</option>
+                                <option value="send_notification">发送通知</option>
+                                <option value="create_reminder">创建提醒</option>
+                                <option value="update_status">更新状态</option>
+                                <option value="generate_report">生成报告</option>
+                                <option value="call_ai">调用AI</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">触发条件 (JSON)</label>
+                        <textarea class="form-control" name="trigger_condition" rows="3" placeholder='{"days": 3}'></textarea>
+                        <small class="text-muted">根据触发类型设置条件，如任务逾期天数、预算比例等</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">动作配置 (JSON)</label>
+                        <textarea class="form-control" name="action_config" rows="3" placeholder='{"message": "您有逾期任务"}'></textarea>
+                        <small class="text-muted">配置动作执行的具体参数</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建规则</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑规则模态框 -->
+<div class="modal fade" id="editRuleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> 编辑工作流规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editRuleForm">
+                <div class="modal-body">
+                    <input type="hidden" name="rule_id" id="edit_rule_id">
+                    <div class="mb-3">
+                        <label class="form-label">规则名称</label>
+                        <input type="text" class="form-control" name="rule_name" id="edit_rule_name" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">触发类型</label>
+                            <select class="form-select" name="trigger_type" id="edit_trigger_type" required>
+                                <option value="task_overdue">任务逾期</option>
+                                <option value="task_completed">任务完成</option>
+                                <option value="budget_exceeded">预算超支</option>
+                                <option value="schedule_delayed">进度延迟</option>
+                                <option value="daily">每日触发</option>
+                                <option value="weekly">每周触发</option>
+                                <option value="manual">手动触发</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">执行动作</label>
+                            <select class="form-select" name="action_type" id="edit_action_type" required>
+                                <option value="send_notification">发送通知</option>
+                                <option value="create_reminder">创建提醒</option>
+                                <option value="update_status">更新状态</option>
+                                <option value="generate_report">生成报告</option>
+                                <option value="call_ai">调用AI</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">触发条件 (JSON)</label>
+                        <textarea class="form-control" name="trigger_condition" id="edit_trigger_condition" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">动作配置 (JSON)</label>
+                        <textarea class="form-control" name="action_config" id="edit_action_config" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('addRuleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    if (data.trigger_condition) {
+        try {
+            JSON.parse(data.trigger_condition);
+        } catch (e) {
+            alert('触发条件必须是有效的JSON格式');
+            return;
+        }
+    }
+    if (data.action_config) {
+        try {
+            JSON.parse(data.action_config);
+        } catch (e) {
+            alert('动作配置必须是有效的JSON格式');
+            return;
+        }
+    }
+    
+    fetch('/api/workflow/rules/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('创建失败: ' + (res.error || '未知错误'));
+        }
+    });
+});
+
+function editRule(ruleId) {
+    fetch('/api/workflow/rules/?trigger_type=')
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            const rule = res.data.find(r => r.rule_id === ruleId);
+            if (rule) {
+                document.getElementById('edit_rule_id').value = rule.rule_id;
+                document.getElementById('edit_rule_name').value = rule.rule_name;
+                document.getElementById('edit_trigger_type').value = rule.trigger_type;
+                document.getElementById('edit_action_type').value = rule.action_type;
+                document.getElementById('edit_trigger_condition').value = rule.trigger_condition || '';
+                document.getElementById('edit_action_config').value = rule.action_config || '';
+                
+                new bootstrap.Modal(document.getElementById('editRuleModal')).show();
+            }
+        }
+    });
+}
+
+document.getElementById('editRuleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    fetch('/api/workflow/rules/', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('保存失败: ' + (res.error || '未知错误'));
+        }
+    });
+});
+
+function deleteRule(ruleId) {
+    if (!confirm('确定要删除这条规则吗？')) return;
+    
+    fetch('/api/workflow/rules/?rule_id=' + ruleId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('删除失败: ' + (res.error || '未知错误'));
+        }
+    });
+}
+
+function toggleRule(ruleId) {
+    fetch('/api/workflow/rules/?rule_id=' + ruleId, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success && res.data.length > 0) {
+            const rule = res.data[0];
+            rule.is_enabled = !rule.is_enabled;
+            
+            fetch('/api/workflow/rules/', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(rule)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    location.reload();
+                }
+            });
+        }
+    });
+}
+
+function checkWorkflows() {
+    fetch('/api/risks/check/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            types: ['overdue', 'budget', 'schedule']
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            let total = 0;
+            if (res.data.overdue) total += res.data.overdue.length;
+            if (res.data.budget) total += res.data.budget.length;
+            if (res.data.schedule) total += res.data.schedule.length;
+            alert('风险检测完成，发现 ' + total + ' 个风险项');
+            location.reload();
+        } else {
+            alert('检测失败: ' + (res.error || '未知错误'));
+        }
+    });
+}
+</script>
+{% endblock %}
