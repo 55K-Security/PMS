@@ -2606,3 +2606,24 @@ def workflow_logs_api(request):
     logs = engine.get_execution_log(rule_id, limit)
     
     return JsonResponse({'success': True, 'data': logs})
+
+
+@login_required
+def risk_alert_resolve_api(request, alert_id):
+    """标记风险预警为已解决API"""
+    from pmsapp.models import RiskAlert
+    from datetime import datetime
+    
+    if request.method == "POST":
+        try:
+            alert = RiskAlert.objects.get(alert_id=alert_id)
+            alert.is_resolved = True
+            alert.resolved_at = datetime.now()
+            alert.save()
+            return JsonResponse({'success': True})
+        except RiskAlert.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '预警不存在'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})

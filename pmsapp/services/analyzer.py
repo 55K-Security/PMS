@@ -74,14 +74,16 @@ class RiskAnalyzer:
                 overdue_days = (today - task.plan_end_date).days
                 
                 if overdue_days >= days_threshold:
-                    if overdue_days >= days_threshold * 2:
+                    if overdue_days >= days_threshold * 3:
+                        risk_level = 'critical'
+                    elif overdue_days >= days_threshold * 2:
                         risk_level = 'high'
                     elif overdue_days >= days_threshold:
                         risk_level = 'medium'
                     else:
                         risk_level = 'low'
                     
-                    alert_id = f"ALERT-{today.strftime('%Y%m%d')}-{task.task_id}"
+                    alert_id = f"ALERT-{today.strftime('%Y%m%d')}-{task.task_id}-{overdue_days}"
                     
                     alert = RiskAlert(
                         alert_id=alert_id,

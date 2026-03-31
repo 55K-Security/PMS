@@ -205,17 +205,21 @@ function runRiskCheck() {
 function resolveAlert(alertId) {
     if (!confirm('确定要标记此预警为已解决吗？')) return;
     
-    fetch('/api/risks/check/', {
+    fetch('/api/risks/alerts/' + alertId + '/resolve/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ resolve_alert: alertId })
+        body: JSON.stringify({})
     })
     .then(r => r.json())
     .then(res => {
-        location.reload();
+        if (res.success) {
+            location.reload();
+        } else {
+            alert('操作失败: ' + (res.error || '未知错误'));
+        }
     });
 }
 

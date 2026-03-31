@@ -68,6 +68,7 @@ urlpatterns = [
     path('api/ai/analyze/report/', views.ai_generate_report_api, name='ai_generate_report_api'),
     path('api/ai/recommend/task/', views.ai_recommend_task_api, name='ai_recommend_task_api'),
     path('api/risks/alerts/', views.risk_alerts_api, name='risk_alerts_api'),
+    path('api/risks/alerts/<str:alert_id>/resolve/', views.risk_alert_resolve_api, name='risk_alert_resolve_api'),
     path('api/risks/check/', views.risk_check_api, name='risk_check_api'),
     path('api/workflow/rules/', views.workflow_rules_api, name='workflow_rules_api'),
     path('api/workflow/logs/', views.workflow_logs_api, name='workflow_logs_api'),

@@ -191,13 +191,13 @@ class AIAgent:
         """保存对话历史"""
         try:
             from pmsapp.models import AIChatHistory, UserInfo
+            import uuid
             
             user = UserInfo.objects.filter(user_id=user_id).first()
             if not user:
                 return
             
-            history_count = AIChatHistory.objects.count() + 1
-            history_id = f"CHAT-{datetime.now().strftime('%Y%m%d')}-{history_count:04d}"
+            history_id = f"CHAT-{uuid.uuid4().hex[:12].upper()}"
             
             AIChatHistory.objects.create(
                 history_id=history_id,
