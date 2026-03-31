@@ -1,28 +1,21 @@
 """
 AI API路由 - 处理AI相关的REST API请求
+所有API都需要登录认证
 """
 
 import json
 import logging
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 
 logger = logging.getLogger(__name__)
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def ai_chat(request):
-    """
-    AI对话接口
-    POST /api/ai/chat
-    {
-        "message": "用户消息",
-        "session_id": "可选的会话ID"
-    }
-    """
+    """AI对话接口"""
     try:
         data = json.loads(request.body)
         message = data.get('message', '')
@@ -49,17 +42,14 @@ def ai_chat(request):
             }
         })
     except Exception as e:
-        logger.error(f"AI对话失败: {e}")
+        logger.error("AI对话失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["GET"])
 def ai_chat_history(request):
-    """
-    获取AI对话历史
-    GET /api/ai/chat/history?session_id=xxx
-    """
+    """获取AI对话历史"""
     try:
         session_id = request.GET.get('session_id')
         
@@ -77,17 +67,14 @@ def ai_chat_history(request):
             sessions = agent.get_chat_sessions(user_id)
             return JsonResponse({'success': True, 'data': sessions})
     except Exception as e:
-        logger.error(f"获取对话历史失败: {e}")
+        logger.error("获取对话历史失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["DELETE"])
 def ai_chat_clear(request):
-    """
-    清除AI对话历史
-    DELETE /api/ai/chat/history?session_id=xxx
-    """
+    """清除AI对话历史"""
     try:
         session_id = request.GET.get('session_id')
         
@@ -102,18 +89,14 @@ def ai_chat_clear(request):
         
         return JsonResponse({'success': success})
     except Exception as e:
-        logger.error(f"清除对话历史失败: {e}")
+        logger.error("清除对话历史失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST", "GET"])
 def ai_config(request):
-    """
-    AI配置接口
-    GET /api/ai/config - 获取配置
-    POST /api/ai/config - 保存配置
-    """
+    """AI配置接口"""
     try:
         user_id = _get_user_id(request)
         if not user_id:
@@ -146,23 +129,14 @@ def ai_config(request):
             
             return JsonResponse({'success': success})
     except Exception as e:
-        logger.error(f"AI配置失败: {e}")
+        logger.error("AI配置失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def ai_config_validate(request):
-    """
-    验证AI配置
-    POST /api/ai/config/validate
-    {
-        "provider": "openai",
-        "api_url": "https://api.openai.com/v1",
-        "api_key": "xxx",
-        "model_name": "gpt-3.5-turbo"
-    }
-    """
+    """验证AI配置"""
     try:
         data = json.loads(request.body)
         
@@ -179,20 +153,14 @@ def ai_config_validate(request):
             }
         })
     except Exception as e:
-        logger.error(f"AI配置验证失败: {e}")
+        logger.error("AI配置验证失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def ai_analyze_risk(request):
-    """
-    分析项目风险
-    POST /api/ai/analyze/risk
-    {
-        "project_id": "PROJECT-2026-001"
-    }
-    """
+    """分析项目风险"""
     try:
         data = json.loads(request.body)
         project_id = data.get('project_id')
@@ -216,20 +184,14 @@ def ai_analyze_risk(request):
             }
         })
     except Exception as e:
-        logger.error(f"风险分析失败: {e}")
+        logger.error("风险分析失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def ai_generate_report(request):
-    """
-    生成分析报告
-    POST /api/ai/analyze/report
-    {
-        "report_type": "weekly" | "monthly"
-    }
-    """
+    """生成分析报告"""
     try:
         data = json.loads(request.body)
         report_type = data.get('report_type', 'weekly')
@@ -251,22 +213,14 @@ def ai_generate_report(request):
             }
         })
     except Exception as e:
-        logger.error(f"生成报告失败: {e}")
+        logger.error("生成报告失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def ai_recommend_task(request):
-    """
-    推荐任务分配
-    POST /api/ai/recommend/task
-    {
-        "project_id": "PROJECT-2026-001",
-        "task_type": "开发",
-        "expected_hours": 8
-    }
-    """
+    """推荐任务分配"""
     try:
         data = json.loads(request.body)
         task_data = {
@@ -285,20 +239,14 @@ def ai_recommend_task(request):
             'data': recommendations
         })
     except Exception as e:
-        logger.error(f"任务推荐失败: {e}")
+        logger.error("任务推荐失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["GET", "POST", "PUT", "DELETE"])
 def workflow_rules(request, rule_id=None):
-    """
-    工作流规则管理接口
-    GET    /api/workflow/rules     - 获取规则列表
-    POST   /api/workflow/rules     - 创建规则
-    PUT    /api/workflow/rules/:id - 更新规则
-    DELETE /api/workflow/rules/:id - 删除规则
-    """
+    """工作流规则管理接口"""
     try:
         user_id = _get_user_id(request)
         if not user_id:
@@ -350,17 +298,14 @@ def workflow_rules(request, rule_id=None):
         
         return JsonResponse({'success': False, 'error': '无效的请求'})
     except Exception as e:
-        logger.error(f"工作流规则管理失败: {e}")
+        logger.error("工作流规则管理失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["GET"])
 def workflow_logs(request):
-    """
-    获取工作流执行日志
-    GET /api/workflow/logs?rule_id=xxx
-    """
+    """获取工作流执行日志"""
     try:
         rule_id = request.GET.get('rule_id')
         limit = int(request.GET.get('limit', 50))
@@ -375,23 +320,19 @@ def workflow_logs(request):
             'data': logs
         })
     except Exception as e:
-        logger.error(f"获取工作流日志失败: {e}")
+        logger.error("获取工作流日志失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["GET"])
 def risk_alerts(request):
-    """
-    获取风险预警列表
-    GET /api/risks/alerts?project_id=xxx&resolved=false
-    """
+    """获取风险预警列表"""
     try:
         project_id = request.GET.get('project_id')
         resolved = request.GET.get('resolved', 'false').lower() == 'true'
         
         from pmsapp.models import RiskAlert
-        from pmsapp.services.analyzer import RiskAnalyzer
         
         query = RiskAlert.objects.filter(is_resolved=resolved)
         if project_id:
@@ -417,17 +358,14 @@ def risk_alerts(request):
             ]
         })
     except Exception as e:
-        logger.error(f"获取风险预警失败: {e}")
+        logger.error("获取风险预警失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def risk_alert_resolve(request, alert_id):
-    """
-    标记风险预警为已解决
-    POST /api/risks/alerts/:id/resolve
-    """
+    """标记风险预警为已解决"""
     try:
         from pmsapp.services.analyzer import RiskAnalyzer
         analyzer = RiskAnalyzer()
@@ -436,20 +374,14 @@ def risk_alert_resolve(request, alert_id):
         
         return JsonResponse({'success': success})
     except Exception as e:
-        logger.error(f"解决风险预警失败: {e}")
+        logger.error("解决风险预警失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-@csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def risk_check(request):
-    """
-    手动触发风险检测
-    POST /api/risks/check
-    {
-        "types": ["overdue", "budget", "schedule"]
-    }
-    """
+    """手动触发风险检测"""
     try:
         data = json.loads(request.body)
         check_types = data.get('types', ['overdue', 'budget', 'schedule'])
@@ -473,7 +405,7 @@ def risk_check(request):
             'data': results
         })
     except Exception as e:
-        logger.error(f"风险检测失败: {e}")
+        logger.error("风险检测失败")
         return JsonResponse({'success': False, 'error': str(e)})
 
 
