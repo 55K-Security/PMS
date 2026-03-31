@@ -11,6 +11,139 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        /* AI Chat Widget Styles */
+        .ai-chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            width: 380px;
+            max-height: 520px;
+        }
+        
+        .ai-chat-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 8px 32px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            height: 480px;
+            overflow: hidden;
+        }
+        
+        .ai-chat-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .ai-chat-header h5 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .ai-chat-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .ai-chat-actions button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .ai-chat-actions button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .ai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .ai-message {
+            display: flex;
+            max-width: 85%;
+        }
+        
+        .ai-message-user {
+            align-self: flex-end;
+        }
+        
+        .ai-message-bot {
+            align-self: flex-start;
+        }
+        
+        .ai-message-content {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        
+        .ai-message-user .ai-message-content {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .ai-message-bot .ai-message-content {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .ai-chat-input {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+        }
+        
+        .ai-chat-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        .ai-chat-input input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .ai-chat-input button {
+            padding: 8px 12px;
+            border-radius: 20px;
+        }
+        
+        /* Risk Level Badges */
+        .risk-critical { background: #dc2626; color: white; }
+        .risk-high { background: #f59e0b; color: white; }
+        .risk-medium { background: #3b82f6; color: white; }
+        .risk-low { background: #10b981; color: white; }
+        
+        /* Workflow Status */
+        .workflow-active { background: #10b981; color: white; }
+        .workflow-inactive { background: #6b7280; color: white; }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body class="theme-light">
@@ -119,6 +252,29 @@
                     <i class="bi bi-gear"></i><span>设置</span>
                 </a>
             </li>
+            
+            <div class="nav-divider"></div>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if '/ai/' in request.path %}active{% endif %}" href="{% url 'ai_settings' %}">
+                    <i class="bi bi-robot"></i><span>AI配置</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/ai/chat/' in request.path %}active{% endif %}" href="{% url 'ai_chat' %}">
+                    <i class="bi bi-chat-dots"></i><span>AI助手</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/ai/risks/' in request.path %}active{% endif %}" href="{% url 'ai_risks' %}">
+                    <i class="bi bi-shield-exclamation"></i><span>风险预警</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if '/workflow/' in request.path %}active{% endif %}" href="{% url 'workflow_rules' %}">
+                    <i class="bi bi-diagram-3"></i><span>工作流</span>
+                </a>
+            </li>
         </ul>
     </nav>
     
@@ -133,6 +289,12 @@
         </div>
         
         <div class="topbar-right" style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn btn-outline-light btn-sm theme-toggle-btn" onclick="toggleTheme()" title="切换主题" style="border: none; background: transparent; padding: 6px 10px;">
+                <i class="bi bi-palette"></i>
+            </button>
+            <button class="btn btn-outline-light btn-sm" onclick="toggleAiChat()" title="AI助手" style="border: none; background: transparent; padding: 6px 10px; color: var(--accent-color);">
+                <i class="bi bi-robot"></i>
+            </button>
             <a href="{% url 'help_index' %}" class="btn btn-outline-light btn-sm" aria-label="帮助">
                 <i class="bi bi-question-circle"></i>
             </a>
@@ -159,20 +321,152 @@
         
         {% block content %}{% endblock %}
     </div>
+    
+    <!-- AI助手悬浮组件 -->
+    <div id="ai-chat-widget" class="ai-chat-widget" style="display: none;">
+        <div class="ai-chat-container">
+            <div class="ai-chat-header">
+                <h5><i class="bi bi-robot"></i> AI助手</h5>
+                <div class="ai-chat-actions">
+                    <button class="btn btn-sm" onclick="clearAiChat()"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn-sm" onclick="toggleAiChat()"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            <div class="ai-chat-messages" id="ai-chat-messages">
+                <div class="ai-message ai-message-bot">
+                    <div class="ai-message-content">
+                        您好！我是AI助手，可以帮您分析项目风险、生成报告、推荐任务分配等。有什么可以帮您的？
+                    </div>
+                </div>
+            </div>
+            <div class="ai-chat-input">
+                <input type="text" id="ai-chat-input" placeholder="输入您的问题..." onkeypress="handleAiChatKeypress(event)">
+                <button class="btn btn-primary btn-sm" onclick="sendAiMessage()"><i class="bi bi-send"></i></button>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
     <script>
-    // Set light theme by default
+    // Theme management
     function setTheme(theme) {
         localStorage.setItem('theme', theme);
-        document.body.classList.remove('theme-dark', 'theme-light', 'theme-system');
+        document.body.classList.remove('theme-dark', 'theme-light');
         document.body.classList.add('theme-' + theme);
+        updateThemeIcon(theme);
+    }
+    
+    function toggleTheme() {
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+    }
+    
+    function updateThemeIcon(theme) {
+        const icon = document.querySelector('.theme-toggle-btn i');
+        if (icon) {
+            icon.className = theme === 'light' ? 'bi bi-moon' : 'bi bi-sun';
+        }
     }
     
     // Initialize theme
-    setTheme('light');
+    const initialTheme = localStorage.getItem('theme') || 'light';
+    setTheme(initialTheme);
+    
+    // AI Chat Widget
+    let aiChatSessionId = null;
+    
+    function toggleAiChat() {
+        const widget = document.getElementById('ai-chat-widget');
+        if (widget.style.display === 'none') {
+            widget.style.display = 'block';
+            document.getElementById('ai-chat-input').focus();
+        } else {
+            widget.style.display = 'none';
+        }
+    }
+    
+    function handleAiChatKeypress(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendAiMessage();
+        }
+    }
+    
+    function sendAiMessage() {
+        const input = document.getElementById('ai-chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+        
+        addAiMessage('user', message);
+        input.value = '';
+        
+        // Show loading
+        const loadingMsg = addAiMessage('bot', '思考中...');
+        
+        // Send to API
+        fetch('/api/ai/chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                message: message,
+                session_id: aiChatSessionId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            removeAiMessage(loadingMsg);
+            if (data.success) {
+                aiChatSessionId = data.data.session_id;
+                addAiMessage('bot', data.data.content);
+            } else {
+                addAiMessage('bot', '抱歉，AI服务暂时不可用: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(err => {
+            removeAiMessage(loadingMsg);
+            addAiMessage('bot', '请求失败: ' + err.message);
+        });
+    }
+    
+    function addAiMessage(role, content) {
+        const container = document.getElementById('ai-chat-messages');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'ai-message ai-message-' + (role === 'user' ? 'user' : 'bot');
+        msgDiv.innerHTML = '<div class="ai-message-content">' + escapeHtml(content) + '</div>';
+        container.appendChild(msgDiv);
+        container.scrollTop = container.scrollHeight;
+        return msgDiv;
+    }
+    
+    function removeAiMessage(msgDiv) {
+        if (msgDiv && msgDiv.parentNode) {
+            msgDiv.parentNode.removeChild(msgDiv);
+        }
+    }
+    
+    function clearAiChat() {
+        const container = document.getElementById('ai-chat-messages');
+        container.innerHTML = '<div class="ai-message ai-message-bot"><div class="ai-message-content">对话已清空。有什么可以帮您的？</div></div>';
+        aiChatSessionId = null;
+    }
+    
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.querySelector('meta[name="csrf-token"]')?.content ||
+               '{{ csrf_token }}';
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
     
     // Sidebar toggle
     function toggleSidebar() {

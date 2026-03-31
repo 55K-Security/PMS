@@ -2228,3 +2228,381 @@ def help_index(request):
         'selected_category': selected_category,
         'selected_item': selected_item,
     })
+
+
+# AI相关视图函数
+
+@login_required
+def ai_dashboard(request):
+    """AI功能仪表盘"""
+    user_info = get_or_create_user_info(request.user.username)
+    
+    from pmsapp.services.ai_gateway import AIGateway
+    gateway = AIGateway()
+    ai_config = gateway.get_config()
+    
+    has_ai_config = ai_config is not None
+    
+    return render(request, 'ai/dashboard.html', {
+        'user_info': user_info,
+        'has_ai_config': has_ai_config,
+    })
+
+
+@login_required
+def ai_chat_page(request):
+    """AI助手页面"""
+    user_info = get_or_create_user_info(request.user.username)
+    return render(request, 'ai/chat.html', {
+        'user_info': user_info,
+    })
+
+
+@login_required
+def ai_risks_page(request):
+    """风险预警页面"""
+    user_info = get_or_create_user_info(request.user.username)
+    
+    from pmsapp.models import RiskAlert, ProjectInfo
+    
+    unresolved_alerts = RiskAlert.objects.filter(is_resolved=False).order_by('-created_at')[:50]
+    resolved_alerts = RiskAlert.objects.filter(is_resolved=True).order_by('-resolved_at')[:20]
+    projects = ProjectInfo.objects.all()
+    
+    risk_summary = {
+        'critical': unresolved_alerts.filter(risk_level='critical').count(),
+        'high': unresolved_alerts.filter(risk_level='high').count(),
+        'medium': unresolved_alerts.filter(risk_level='medium').count(),
+        'low': unresolved_alerts.filter(risk_level='low').count(),
+    }
+    
+    return render(request, 'ai/risks.html', {
+        'user_info': user_info,
+        'unresolved_alerts': unresolved_alerts,
+        'resolved_alerts': resolved_alerts,
+        'projects': projects,
+        'risk_summary': risk_summary,
+    })
+
+
+@login_required
+def workflow_rules_page(request):
+    """工作流规则管理页面"""
+    user_info = get_or_create_user_info(request.user.username)
+    
+    from pmsapp.models import WorkflowRule, WorkflowLog
+    
+    rules = WorkflowRule.objects.all().order_by('-created_at')
+    recent_logs = WorkflowLog.objects.all().order_by('-executed_at')[:30]
+    
+    return render(request, 'ai/workflow.html', {
+        'user_info': user_info,
+        'rules': rules,
+        'recent_logs': recent_logs,
+    })
+
+
+# AI API视图函数
+
+@login_required
+def ai_chat_api(request):
+    """AI对话API"""
+    from pmsapp.services.ai_agent import AIAgent
+    
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        message = data.get('message', '')
+        session_id = data.get('session_id')
+        
+        if not message:
+            return JsonResponse({'success': False, 'error': '消息不能为空'})
+        
+        user_id = get_or_create_user_info(request.user.username).user_id
+        agent = AIAgent()
+        response = agent.chat(user_id, message, session_id)
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'content': response.content,
+                'session_id': response.session_id,
+            }
+        })
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def ai_chat_history_api(request):
+    """AI对话历史API"""
+    from pmsapp.services.ai_agent import AIAgent
+    
+    session_id = request.GET.get('session_id')
+    user_id = get_or_create_user_info(request.user.username).user_id
+    agent = AIAgent()
+    
+    if session_id:
+        history = agent._get_chat_history(user_id, session_id)
+        return JsonResponse({'success': True, 'data': history})
+    else:
+        sessions = agent.get_chat_sessions(user_id)
+        return JsonResponse({'success': True, 'data': sessions})
+
+
+@login_required
+def ai_chat_clear_api(request):
+    """清除AI对话历史API"""
+    from pmsapp.services.ai_agent import AIAgent
+    
+    session_id = request.GET.get('session_id')
+    user_id = get_or_create_user_info(request.user.username).user_id
+    agent = AIAgent()
+    
+    success = agent.clear_chat_history(user_id, session_id)
+    return JsonResponse({'success': success})
+
+
+@login_required
+def ai_config_api(request):
+    """AI配置API"""
+    from pmsapp.services.ai_gateway import AIGateway
+    gateway = AIGateway()
+    
+    if request.method == "GET":
+        provider = request.GET.get('provider')
+        config = gateway.get_config(provider)
+        
+        if config:
+            config['api_key'] = '********' if config.get('api_key') else ''
+        
+        return JsonResponse({'success': True, 'data': config})
+    
+    elif request.method == "POST":
+        data = json.loads(request.body)
+        provider = data.get('provider', 'openai')
+        api_url = data.get('api_url', '')
+        api_key = data.get('api_key', '')
+        model_name = data.get('model_name', '')
+        is_default = data.get('is_default', True)
+        
+        if not api_url or not api_key or not model_name:
+            return JsonResponse({'success': False, 'error': '缺少必要参数'})
+        
+        success = gateway.save_config(provider, api_url, api_key, model_name, is_default)
+        return JsonResponse({'success': success})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def ai_config_validate_api(request):
+    """验证AI配置API"""
+    from pmsapp.services.ai_gateway import AIGateway
+    
+    if request.method == "POST":
+        data = json.loads(request.body)
+        gateway = AIGateway()
+        is_valid, message = gateway.validate_config(data)
+        return JsonResponse({'success': True, 'data': {'valid': is_valid, 'message': message}})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def ai_analyze_risk_api(request):
+    """分析项目风险API"""
+    from pmsapp.services.ai_agent import AIAgent
+    
+    if request.method == "POST":
+        data = json.loads(request.body)
+        project_id = data.get('project_id')
+        
+        if not project_id:
+            return JsonResponse({'success': False, 'error': '项目ID不能为空'})
+        
+        user_id = get_or_create_user_info(request.user.username).user_id
+        agent = AIAgent()
+        report = agent.analyze_risk(project_id)
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'project_id': report.project_id,
+                'risk_level': report.risk_level,
+                'risks': report.risks,
+                'suggestions': report.suggestions,
+            }
+        })
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def ai_generate_report_api(request):
+    """生成报告API"""
+    from pmsapp.services.ai_agent import AIAgent
+    
+    if request.method == "POST":
+        data = json.loads(request.body)
+        report_type = data.get('report_type', 'weekly')
+        
+        user_id = get_or_create_user_info(request.user.username).user_id
+        agent = AIAgent()
+        report = agent.generate_report(user_id, report_type)
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'report_type': report_type,
+                'content': report,
+            }
+        })
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def ai_recommend_task_api(request):
+    """推荐任务分配API"""
+    from pmsapp.services.ai_agent import AIAgent
+    
+    if request.method == "POST":
+        data = json.loads(request.body)
+        task_data = {
+            'project_id': data.get('project_id'),
+            'task_type': data.get('task_type'),
+            'expected_hours': data.get('expected_hours'),
+        }
+        
+        agent = AIAgent()
+        recommendations = agent.recommend_assignee(task_data)
+        
+        return JsonResponse({'success': True, 'data': recommendations})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def risk_alerts_api(request):
+    """获取风险预警列表API"""
+    from pmsapp.models import RiskAlert
+    
+    project_id = request.GET.get('project_id')
+    resolved = request.GET.get('resolved', 'false').lower() == 'true'
+    
+    query = RiskAlert.objects.filter(is_resolved=resolved)
+    if project_id:
+        query = query.filter(project__project_id=project_id)
+    
+    alerts = query.order_by('-created_at')[:50]
+    
+    return JsonResponse({
+        'success': True,
+        'data': [
+            {
+                'alert_id': a.alert_id,
+                'project_id': a.project.project_id,
+                'project_name': a.project.project_name,
+                'alert_type': a.alert_type,
+                'risk_level': a.risk_level,
+                'description': a.description,
+                'suggestion': a.suggestion,
+                'is_resolved': a.is_resolved,
+                'created_at': a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in alerts
+        ]
+    })
+
+
+@login_required
+def risk_check_api(request):
+    """触发风险检测API"""
+    from pmsapp.services.analyzer import RiskAnalyzer
+    
+    if request.method == "POST":
+        data = json.loads(request.body)
+        check_types = data.get('types', ['overdue', 'budget', 'schedule'])
+        
+        analyzer = RiskAnalyzer()
+        results = {}
+        
+        if 'overdue' in check_types:
+            results['overdue'] = [a.to_dict() for a in analyzer.check_overdue_tasks()]
+        
+        if 'budget' in check_types:
+            results['budget'] = [a.to_dict() for a in analyzer.check_budget_risk()]
+        
+        if 'schedule' in check_types:
+            results['schedule'] = [a.to_dict() for a in analyzer.check_schedule_risk()]
+        
+        return JsonResponse({'success': True, 'data': results})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def workflow_rules_api(request):
+    """工作流规则管理API"""
+    from pmsapp.services.workflow_engine import WorkflowEngine, WorkflowRule
+    
+    engine = WorkflowEngine()
+    
+    if request.method == "GET":
+        trigger_type = request.GET.get('trigger_type')
+        rules = engine.get_rules(trigger_type)
+        return JsonResponse({'success': True, 'data': [r.to_dict() for r in rules]})
+    
+    elif request.method == "POST":
+        data = json.loads(request.body)
+        user_id = get_or_create_user_info(request.user.username).user_id
+        
+        rule = WorkflowRule(
+            rule_id='',
+            rule_name=data.get('rule_name', ''),
+            trigger_type=data.get('trigger_type', 'manual'),
+            trigger_condition=data.get('trigger_condition', {}),
+            action_type=data.get('action_type', 'send_notification'),
+            action_config=data.get('action_config', {}),
+            is_enabled=data.get('is_enabled', True),
+            created_by=user_id
+        )
+        success = engine.add_rule(rule)
+        return JsonResponse({'success': success})
+    
+    elif request.method == "PUT":
+        data = json.loads(request.body)
+        rule_id = data.get('rule_id')
+        
+        rule = WorkflowRule(
+            rule_id=rule_id,
+            rule_name=data.get('rule_name', ''),
+            trigger_type=data.get('trigger_type', 'manual'),
+            trigger_condition=data.get('trigger_condition', {}),
+            action_type=data.get('action_type', 'send_notification'),
+            action_config=data.get('action_config', {}),
+            is_enabled=data.get('is_enabled', True)
+        )
+        success = engine.update_rule(rule)
+        return JsonResponse({'success': success})
+    
+    elif request.method == "DELETE":
+        rule_id = request.GET.get('rule_id')
+        success = engine.delete_rule(rule_id)
+        return JsonResponse({'success': success})
+    
+    return JsonResponse({'success': False, 'error': '不支持的请求方法'})
+
+
+@login_required
+def workflow_logs_api(request):
+    """获取工作流执行日志API"""
+    from pmsapp.services.workflow_engine import WorkflowEngine
+    
+    engine = WorkflowEngine()
+    rule_id = request.GET.get('rule_id')
+    limit = int(request.GET.get('limit', 50))
+    
+    logs = engine.get_execution_log(rule_id, limit)
+    
+    return JsonResponse({'success': True, 'data': logs})

@@ -358,3 +358,144 @@ class TeamGroup(models.Model):
     
     def __str__(self):
         return self.team_name
+
+
+class AIChatHistory(models.Model):
+    """AI对话历史表"""
+    ROLE_CHOICES = [
+        ('user', '用户'),
+        ('assistant', 'AI助手'),
+        ('system', '系统'),
+    ]
+    
+    history_id = models.CharField(max_length=64, primary_key=True, verbose_name='历史记录ID')
+    user = models.ForeignKey(UserInfo, on_delete=models.CASCADE, related_name='ai_chat_history', verbose_name='用户')
+    session_id = models.CharField(max_length=64, verbose_name='会话ID')
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES, verbose_name='角色')
+    content = models.TextField(verbose_name='消息内容')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    
+    class Meta:
+        db_table = 't_ai_chat_history'
+        verbose_name = 'AI对话历史'
+        verbose_name_plural = 'AI对话历史'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'session_id']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.user_name} - {self.role} - {self.created_at}"
+
+
+class WorkflowRule(models.Model):
+    """工作流规则表"""
+    TRIGGER_TYPES = [
+        ('task_overdue', '任务逾期'),
+        ('task_completed', '任务完成'),
+        ('budget_exceeded', '预算超支'),
+        ('schedule_delayed', '进度延迟'),
+        ('daily', '每日触发'),
+        ('weekly', '每周触发'),
+        ('manual', '手动触发'),
+    ]
+    
+    ACTION_TYPES = [
+        ('send_notification', '发送通知'),
+        ('create_reminder', '创建提醒'),
+        ('update_status', '更新状态'),
+        ('generate_report', '生成报告'),
+        ('call_ai', '调用AI'),
+    ]
+    
+    rule_id = models.CharField(max_length=32, primary_key=True, verbose_name='规则ID')
+    rule_name = models.CharField(max_length=64, verbose_name='规则名称')
+    trigger_type = models.CharField(max_length=32, choices=TRIGGER_TYPES, verbose_name='触发类型')
+    trigger_condition = models.TextField(blank=True, null=True, verbose_name='触发条件')
+    action_type = models.CharField(max_length=32, choices=ACTION_TYPES, verbose_name='动作类型')
+    action_config = models.TextField(blank=True, null=True, verbose_name='动作配置')
+    is_enabled = models.BooleanField(default=True, verbose_name='是否启用')
+    created_by = models.ForeignKey(UserInfo, on_delete=models.SET_NULL, null=True, related_name='created_workflow_rules', verbose_name='创建人')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        db_table = 't_workflow_rule'
+        verbose_name = '工作流规则'
+        verbose_name_plural = '工作流规则'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.rule_name} ({self.get_trigger_type_display()})"
+
+
+class WorkflowLog(models.Model):
+    """工作流执行日志表"""
+    STATUS_CHOICES = [
+        ('pending', '待执行'),
+        ('running', '执行中'),
+        ('success', '成功'),
+        ('failed', '失败'),
+    ]
+    
+    log_id = models.CharField(max_length=32, primary_key=True, verbose_name='日志ID')
+    rule = models.ForeignKey(WorkflowRule, on_delete=models.SET_NULL, null=True, related_name='execution_logs', verbose_name='关联规则')
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default='pending', verbose_name='执行状态')
+    trigger_data = models.TextField(blank=True, null=True, verbose_name='触发数据')
+    result = models.TextField(blank=True, null=True, verbose_name='执行结果')
+    error_message = models.TextField(blank=True, null=True, verbose_name='错误信息')
+    executed_at = models.DateTimeField(auto_now_add=True, verbose_name='执行时间')
+    
+    class Meta:
+        db_table = 't_workflow_log'
+        verbose_name = '工作流日志'
+        verbose_name_plural = '工作流日志'
+        ordering = ['-executed_at']
+        indexes = [
+            models.Index(fields=['rule', 'executed_at']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.log_id} - {self.rule.rule_name if self.rule else 'N/A'} - {self.status}"
+
+
+class RiskAlert(models.Model):
+    """风险预警表"""
+    RISK_LEVEL_CHOICES = [
+        ('low', '低'),
+        ('medium', '中'),
+        ('high', '高'),
+        ('critical', '严重'),
+    ]
+    
+    ALERT_TYPES = [
+        ('task_overdue', '任务逾期'),
+        ('budget_exceeded', '预算超支'),
+        ('schedule_delayed', '进度延迟'),
+    ]
+    
+    alert_id = models.CharField(max_length=64, primary_key=True, verbose_name='预警ID')
+    project = models.ForeignKey(ProjectInfo, on_delete=models.CASCADE, related_name='risk_alerts', verbose_name='项目')
+    alert_type = models.CharField(max_length=32, choices=ALERT_TYPES, verbose_name='预警类型')
+    risk_level = models.CharField(max_length=16, choices=RISK_LEVEL_CHOICES, default='medium', verbose_name='风险等级')
+    description = models.TextField(verbose_name='描述')
+    suggestion = models.TextField(blank=True, null=True, verbose_name='建议')
+    is_resolved = models.BooleanField(default=False, verbose_name='是否已解决')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name='解决时间')
+    
+    class Meta:
+        db_table = 't_risk_alert'
+        verbose_name = '风险预警'
+        verbose_name_plural = '风险预警'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['project', 'is_resolved']),
+            models.Index(fields=['risk_level']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.project.project_name} - {self.get_risk_level_display()} - {self.get_alert_type_display()}"
